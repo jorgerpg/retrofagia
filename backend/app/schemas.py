@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, conint
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
@@ -37,6 +37,12 @@ class RecordOut(BaseModel):
   model_config = ConfigDict(from_attributes=True)
 
 
+class RecordInCollectionOut(RecordOut):
+  is_favorite: Optional[bool] = None
+  added_at: Optional[datetime] = None
+  condition: Optional[str] = None
+
+
 class CommentIn(BaseModel):
   content: str
 
@@ -67,9 +73,9 @@ class FavoriteUpdate(BaseModel):
   is_favorite: bool
 
 
-class ReviewIn(BaseModel):
+class ReviewCreate(BaseModel):
   record_id: UUID
-  rating: int
+  rating: conint(ge=0, le=5)
   comment: Optional[str] = None
 
 
@@ -77,7 +83,7 @@ class ReviewOut(BaseModel):
   id: UUID
   user_id: UUID
   record_id: UUID
-  rating: int
+  rating: conint(ge=0, le=5)
   comment: Optional[str] = None
   created_at: datetime
   model_config = ConfigDict(from_attributes=True)

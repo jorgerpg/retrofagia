@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+/* Defina seus tokens aqui */
+@theme {
+  /* Cores personalizadas (viram bg-bg, bg-bg-soft, etc.) */
+  --color-bg: #0b0c10;
+  --color-bg-soft: #121318;
+  --color-bg-card: #16181f;
+  --color-bg-ring: #2e3241;
+
+  /* Raio arredondado extra */
+  --radius-3xl: 1.5rem;
+
+  /* Sombra custom */
+  --shadow-soft: 0 10px 30px rgba(0,0,0,.35);
+}
+
+/* Estilos utilitários do app */
+:root { color-scheme: dark; }
+
+body { @apply bg-bg text-white; }
+
+.bg-app {
+  background:
+    radial-gradient(1200px 600px at 80% 10%, rgba(255,255,255,0.06), transparent 60%),
+    radial-gradient(800px 400px at 10% 90%, rgba(255,255,255,0.05), transparent 60%),
+    linear-gradient(180deg, #0b0c10 0%, #0b0c10 100%);
+}
+
+.input {
+  @apply w-full rounded-2xl bg-bg-soft/60 border border-bg-ring/50 px-4 py-2
+         outline-none focus:ring-2 focus:ring-white/10 placeholder:text-white/40;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center rounded-xl bg-white text-black font-medium
+         px-4 py-2 hover:bg-white/90 active:scale-[.99] transition;
+}
+
+.card {
+  @apply rounded-3xl bg-bg-card border border-white/5 shadow-soft overflow-hidden;
+}
+
+.badge {
+  @apply inline-flex items-center rounded-full text-xs px-2 py-1 border border-white/10
+         bg-white/5 backdrop-blur;
+}
+
+.icon-btn {
+  @apply grid place-items-center rounded-full bg-white text-black w-10 h-10 shadow-soft
+         hover:bg-white/90;
+}

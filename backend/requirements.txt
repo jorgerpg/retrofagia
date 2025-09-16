@@ -9,3 +9,4 @@ python-jose[cryptography]==3.3.0
 pydantic-settings==2.4.0
 pydantic[email]==2.8.2
 bcrypt==3.2.2
+pillow
