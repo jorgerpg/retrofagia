@@ -1,258 +1,283 @@
-# Retrofagia — Backend MVP
+# Retrofagia
 
-Colecionador de vinis com feed social, avaliações e DMs. Este README descreve **o que já foi construído**, como **rodar/testar** e os **próximos passos** (com checklists).
+App para catalogar discos (vinil/álbuns), avaliar, seguir amigos e acompanhar um feed de atividades — com mensagens privadas entre usuários.
+
+## 🧱 Stack
+
+* **Backend**: FastAPI + SQLAlchemy 2.0 + Alembic + JWT (PyJWT) + PostgreSQL + psycopg
+* **Infra**: Docker Compose (db + backend), uploads estáticos servidos via FastAPI
+* **Frontend**: React (Vite + TS) + React Router + React Query + Zustand + Tailwind (`@tailwindcss/postcss`) + lucide-react
 
 ---
 
-## 🔧 Stack & Arquitetura
-
-* **API**: FastAPI (Python 3.12)
-* **Auth**: JWT (python-jose) + senhas com Passlib/bcrypt
-
-  > 🔇 Para silenciar warnings do passlib com bcrypt, estamos usando `bcrypt==3.2.2`.
-* **ORM**: SQLAlchemy **2.x**
-* **DB**: PostgreSQL 16
-* **Migrações**: Alembic
-* **Container**: Docker + Docker Compose
-* **Pydantic**: v2 (schemas com `ConfigDict(from_attributes=True)`)
-
-**Diretórios principais (sugestão):**
+## 📦 Estrutura de diretórios
 
 ```
 retrofagia/
 ├─ backend/
 │  ├─ app/
-│  │  ├─ main.py                 # app FastAPI + CORS + include_routers
-│  │  ├─ db.py                   # SessionLocal, engine, Base
-│  │  ├─ config.py               # settings (.env)
-│  │  ├─ deps.py                 # get_current_user (JWT)
-│  │  ├─ models.py               # modelos SQLAlchemy (Users, Records, etc.)
-│  │  ├─ schemas.py              # Pydantic v2 (UUID/datetime)
-│  │  ├─ activity.py             # create_activity(...)
+│  │  ├─ main.py            # instancia FastAPI, mounts, includes de routers
+│  │  ├─ db.py              # SessionLocal, engine, Base
+│  │  ├─ models.py          # Users, Records, Reviews, Follows, Conversations, etc.
+│  │  ├─ schemas.py         # Pydantic models (v2)
+│  │  ├─ deps.py            # get_db, get_current_user
 │  │  └─ routers/
-│  │     ├─ auth.py
-│  │     ├─ records.py
-│  │     ├─ collection.py
-│  │     ├─ reviews.py
-│  │     ├─ comments.py          # comentários em discos
-│  │     ├─ feed.py              # feed + likes + comentários na activity
-│  │     ├─ follows.py           # follow/unfollow (204)
-│  │     └─ conversations.py     # DMs (1:1)
-│  ├─ alembic/ ...               # migrações
+│  │     ├─ auth.py         # /auth/register, /auth/login, /auth/me
+│  │     ├─ records.py      # CRUD records, comentários, upload/delete de capa
+│  │     ├─ collection.py   # adicionar/remover da coleção, favoritos, listagens
+│  │     ├─ reviews.py      # criação/upsert de review 0..5, "minha avaliação"
+│  │     ├─ feed.py         # feed cronológico, likes e comentários em atividades
+│  │     ├─ follows.py      # seguir/seguir de volta
+│  │     └─ conversations.py# DMs (conversas e histórico)
+│  ├─ alembic/              # migrações
 │  ├─ requirements.txt
-│  ├─ Dockerfile
-│  ├─ tests_retrofagia.sh        # script de testes E2E (curl + jq)
-│  └─ Makefile                   # up/build/logs/test
+│  └─ Dockerfile
+├─ frontend/
+│  ├─ src/
+│  │  ├─ main.tsx           # Router + QueryClientProvider + Protected routes
+│  │  ├─ layouts/AppShell.tsx
+│  │  ├─ lib/api.ts         # Axios com Authorization
+│  │  ├─ store/auth.ts      # Zustand (token + /auth/me)
+│  │  ├─ components/
+│  │  │  ├─ RecordCard.tsx
+│  │  │  ├─ AddRecordModal.tsx
+│  │  │  └─ Stars.tsx
+│  │  ├─ pages/
+│  │  │  ├─ Feed.tsx
+│  │  │  ├─ Collection.tsx
+│  │  │  ├─ RecordDetail.tsx
+│  │  │  ├─ DMs.tsx
+│  │  │  └─ Login.tsx
+│  │  ├─ types.ts
+│  │  └─ index.css          # Tailwind + estilos utilitários
+│  ├─ postcss.config.js     # usa @tailwindcss/postcss
+│  ├─ tailwind.config.js
+│  └─ vite.config.ts
 ├─ docker-compose.yaml
-└─ (frontend/ - a ser criado)
+├─ tests_retrofagia.sh      # testes de ponta-a-ponta via curl
+└─ README.md
 ```
 
 ---
 
-## ✅ Funcionalidades já implementadas
+## ✅ O que já está implementado
 
-### Usuários & Autenticação
+### Backend
 
-* [x] Registro `/auth/register` (400 se username/email já usados)
-* [x] Login `/auth/login` → `access_token` (JWT)
-* [x] Perfil atual `/auth/me`
+* [x] **Autenticação JWT**
 
-### Discos & Coleção
+  * `/auth/register`, `/auth/login`, `/auth/me`
+* [x] **Modelos e persistência** (PostgreSQL via SQLAlchemy/Alembic)
 
-* [x] Cadastro de disco `/records` (unique por `matrix_code`)
-* [x] Busca de discos por `code`, `q`(titulo/artista), `artist`, `year`, `genre`, `label`
-* [x] Adicionar à coleção `/collection/{record_id}`
-* [x] Favoritar na coleção `PATCH /collection/{record_id} {"is_favorite": true}`
-* [x] Listar favoritos `/collection/me/favorites`
+  * `users`, `records`, `reviews`, `user_collection`, `follows`, `comments`, `conversations`, `messages`, `activity`, `activity_likes`
+* [x] **Cadastro e busca de discos**
 
-### Avaliações & Comentários
+  * `POST /records` (com `matrix_code` único)
+  * `GET /records?code=...` + filtros avançados `year`, `genre`, `label`
+* [x] **Coleção do usuário**
 
-* [x] Review com nota/comentário `POST /reviews` (upsert por user+record)
-* [x] Comentários em disco `POST/GET /records/{id}/comments`
+  * `POST /collection/{record_id}` (adiciona)
+  * `PATCH /collection/{record_id}` (`is_favorite`)
+  * `GET /collection/me` e `GET /collection/me/favorites`
+  * `DELETE /collection/{record_id}` (remover da coleção) **Novo**
+* [x] **Avaliações 0..5 estrelas**
 
-### Social (seguidores) & Feed
+  * `POST /reviews` (upsert por user+record, validação 0..5) **Atualizado**
+  * `GET /reviews/records/{record_id}/me` (minha avaliação) **Novo**
+* [x] **Comentários**
 
-* [x] Seguir usuário `POST /users/{user_id}/follow` (204)
-* [x] Feed dos seguidos `/feed?limit=...` (ordem cronológica inversa)
-* [x] Atividades no feed: ADD\_RECORD, REVIEW, COMMENT
-* [x] Like de atividade `POST/DELETE /feed/{activity_id}/like`
-* [x] Comentários em atividade `POST/GET /feed/{activity_id}/comments`
+  * `POST /records/{id}/comments` e `GET /records/{id}/comments`
+* [x] **Seguidores / Feed**
 
-### Mensagens privadas (DMs)
+  * `POST /users/{user_id}/follow`
+  * `GET /feed?limit=N` (atividades: ADD\_RECORD, REVIEW, COMMENT, FOLLOW)
+  * `POST /feed/{activity_id}/like`, `POST /feed/{activity_id}/comments`, `GET /feed/{activity_id}/comments`
+* [x] **Mensagens privadas (DMs)**
 
-* [x] Criar conversa 1:1 `POST /conversations { other_user_id }`
-* [x] Enviar mensagem `POST /conversations/{conversation_id}/messages`
-* [x] Listar histórico `GET /conversations/{conversation_id}/messages`
+  * `POST /conversations` (A <-> B), `POST /conversations/{id}/messages`, `GET /conversations/{id}/messages`
+* [x] **Uploads estáticos de capa**
+
+  * `PUT /records/{id}/cover` (salva em `uploads/covers/<id>.webp`) **Novo**
+  * `DELETE /records/{id}/cover` (remove arquivo) **Novo**
+  * `GET /uploads/covers/<id>.webp` (servido por StaticFiles)
+
+### Frontend
+
+* [x] **AppShell responsivo** (topbar, content, bottom tab em mobile)
+* [x] **Login** (guarda token em localStorage, `/auth/me`)
+* [x] **Feed** (lista atividades, like/comentar activity)
+* [x] **Coleção**
+
+  * listagem responsiva (2/3/4/5 colunas), busca local, favoritos
+  * **FAB** com **modal “Adicionar Disco”**: cria `record` + adiciona à coleção; se `matrix_code` duplicado, busca e adiciona mesmo assim
+* [x] **Detalhe do Disco**
+
+  * capa (upload/remover), metadados
+  * **minha avaliação** 0..5 com estrelas (salva e reaparece ao abrir)
+  * comentários do disco
+  * **remover da coleção** (navega de volta pra lista)
+* [x] **DMs** (tela base)
+* [x] **Style**: Tailwind com `@tailwindcss/postcss`, componentes utilitários (`btn`, `card`, `input`, `badge`, etc.), grid e fab fix dentro do container.
+
+### Testes de ponta-a-ponta (script)
+
+* [x] `tests_retrofagia.sh` cobre:
+
+  * auth (2 usuários), criação/busca de record, adicionar à coleção, avaliar, feed, comentar, favoritos, busca avançada, follow, like/comentar activity, DMs (ida/volta), duplicidade de `matrix_code`.
+
+> Observação: o script ainda **não cobre** os novos endpoints de **capa** e **remover da coleção**; ver “Próximos passos”.
 
 ---
 
-## ▶️ Como rodar
+## 🚀 Como rodar (dev)
 
-Pré-requisitos: **Docker**, **Docker Compose**, `curl`, `jq` e (opcional) `make`.
+### Requisitos
 
-```bash
-# subir serviços
-docker compose up -d --build
+* Docker & Docker Compose
+* Node 18+ (para o frontend)
 
-# ver logs
-docker compose logs -f backend
-```
-
-Variáveis de ambiente (sugestão de chaves em `.env` usadas no backend):
-
-```
-DATABASE_URL=postgresql+psycopg://retrofagia:retrofagia@db:5432/retrofagia
-JWT_SECRET=troque-por-uma-chave-segura
-JWT_ALG=HS256
-```
-
-> **Migrations**: se necessário, rode `alembic upgrade head` dentro do container backend; mas o projeto já vem com as tabelas criadas/testadas.
-
----
-
-## 🧪 Testes E2E (script)
-
-Usamos um script bash que valida o fluxo **end-to-end** (auth, discos, coleção, reviews, feed, follow, comentários, favoritos, likes, DMs).
+### Backend
 
 ```bash
 cd backend
+# (opcional) ajustar .env com SECRET_KEY / DB_URL se usar fora do compose
+docker compose up -d  # sobe db e backend
+# docs local: http://localhost:8000/docs
+```
+
+> Uploads persistem no diretório `backend/uploads`. Considere mapear volume no compose para não perder arquivos.
+
+### Frontend
+
+```bash
+cd frontend
+npm i
+# atenção: Tailwind usa @tailwindcss/postcss, já configurado em postcss.config.js
+npm run dev
+# app: http://localhost:5173
+```
+
+**.env exemplo (frontend):**
+
+```
+VITE_API_URL=http://localhost:8000
+```
+
+---
+
+## 🧪 Testes de API (shell)
+
+Na raiz do projeto:
+
+```bash
 chmod +x tests_retrofagia.sh
-
-# direto
 ./tests_retrofagia.sh
-
-# ou via make
-make up && make build && make test
 ```
 
-Saída esperada (resumo):
-
-```
-🎉 TODOS OS TESTES PASSARAM!
-```
+Saída esperada: todos os testes “✅”.
 
 ---
 
-## 🔌 Endpoints (cheat sheet)
+## 🧰 Troubleshooting
 
-**Auth**
+* **Docker “permission denied” no socket**
+  Adicione seu usuário ao grupo `docker` e relogue:
 
-* `POST /auth/register` → `{ access_token }`
-* `POST /auth/login` → `{ access_token }`
-* `GET /auth/me` → `{ id, username, email }`
+  ```bash
+  sudo usermod -aG docker $USER
+  newgrp docker
+  ```
+* **bcrypt / passlib warning**
+  Fix recomendado em `requirements.txt`:
 
-**Discos**
-
-* `POST /records` → cria (unique `matrix_code`)
-* `GET /records?code=...&q=...&artist=...&year=...&genre=...&label=...` → lista
-
-**Coleção**
-
-* `POST /collection/{record_id}` → adiciona
-* `PATCH /collection/{record_id}` `{ "is_favorite": true }`
-* `GET /collection/me/favorites` → lista de `Record`
-
-**Reviews & Comentários**
-
-* `POST /reviews` `{ record_id, rating, comment? }` → upsert por user+record
-* `POST /records/{record_id}/comments` `{ content }`
-* `GET  /records/{record_id}/comments`
-
-**Social & Feed**
-
-* `POST /users/{user_id}/follow` → 204
-* `GET  /feed?limit=20` → atividades dos seguidos (e do próprio)
-* `POST /feed/{activity_id}/like` → 204
-* `DELETE /feed/{activity_id}/like` → 204
-* `POST /feed/{activity_id}/comments` `{ content }`
-* `GET  /feed/{activity_id}/comments`
-
-**DMs**
-
-* `POST /conversations` `{ other_user_id }`
-* `POST /conversations/{conversation_id}/messages` `{ content }`
-* `GET  /conversations/{conversation_id}/messages`
+  ```
+  bcrypt==4.1.3
+  passlib[bcrypt]==1.7.4
+  ```
+* **Tailwind erro “use `@tailwindcss/postcss`”**
+  Já corrigido: `postcss.config.js` usa `require("@tailwindcss/postcss")`.
+* **Imports TS “import type …”**
+  Em TS/TSX use `import { type X } from "…"`. Em JS/JSX, use `import { X }`.
 
 ---
 
-## 🩹 Troubleshooting (erros comuns que já resolvemos)
+## 🧭 Roadmap & Checklists
 
-* **SQLAlchemy 2.x**: não use `Model.id.cast(str)`.
-  ✅ Use `from sqlalchemy import cast, String` e compare assim: `cast(Model.id, String) == some_id_str`.
+### Backend
 
-* **UUID vs String no Postgres**: evite `cast(..., String)` quando a coluna é UUID.
-  ✅ Tipar o parâmetro de rota como `UUID` e comparar `UUID == UUID` (ex.: DMs `conversation_id: UUID`).
+* [x] JWT auth, Users, Records, Collection, Reviews, Comments, Follows, Feed, DMs
+* [x] Upload/DELETE de capa (arquivos estáticos)
+* [x] Minha avaliação (`GET /reviews/records/{id}/me`)
+* [ ] **GET `/records/{id}`** (evitar fallback no frontend)
+* [ ] Paginação consistente (`/records`, `/feed`, `/comments`)
+* [ ] Soft delete / idempotência em mais endpoints
+* [ ] Seeds de dados para dev (usuários, discos de exemplo)
+* [ ] Logs estruturados + CORS/config por ambiente
+* [ ] Segurança: rate limit, senha forte, reset de senha/email verify
+* [ ] Armazenamento de capa em S3/Cloud + CDN (produção)
+* [ ] Testes automatizados (pytest) + CI (GitHub Actions)
 
-* **Pydantic v2**: tipos corretos nas responses.
-  ✅ Campos `id`, `user_id`, `record_id` como `UUID`; `created_at` como `datetime`.
-  ✅ `model_config = ConfigDict(from_attributes=True)`.
+### Frontend
 
-* **Passlib + bcrypt 4.x**: “(trapped) error reading bcrypt version”.
-  ✅ Fix com `bcrypt==3.2.2` em `requirements.txt`.
+* [x] AppShell responsivo + Bottom Tab
+* [x] Login + proteção de rotas
+* [x] Feed + Interações
+* [x] Coleção + add via modal + favoritos
+* [x] Detalhe do Disco: capa (up/del), avaliação 0..5, comentários, remover da coleção
+* [ ] **Endpoints dedicados**: consumir `GET /records/{id}` quando disponível
+* [ ] Tela de **Busca/Explorar** com filtros (ano/gênero/gravadora) + paginação
+* [ ] **Perfil**: minhas avaliações, seguidores/seguindo, coleção pública
+* [ ] UI de **DMs** mais completa (lista conversas, não só histórico)
+* [ ] Toasts e erros amigáveis (react-hot-toast)
+* [ ] Loading states/esqueletos padronizados
+* [ ] Preferências de tema (dark já padrão)
+* [ ] E2E (Playwright/Cypress)
 
----
+### Testes & Qualidade
 
-## 📈 Índices recomendados (Alembic)
+* [x] Script `tests_retrofagia.sh` cobrindo fluxo principal
+* [ ] **Estender script** para:
 
-Para performance (opcional, mas sugerido):
-
-* `records(matrix_code)` (unique)
-* `records(title, artist)`
-* `user_collection(user_id)`
-* `reviews(user_id, record_id)` (unique)
-* `follows(follower_id)`
-* `activity(actor_id, created_at)`
-
-> Crie uma revisão Alembic `add indexes` e aplique.
-
----
-
-## 🗺️ Roadmap (próximos passos)
-
-### Frontend (React + Vite + TS + Tailwind + React Query)
-
-* [ ] Setup do projeto (`frontend/`) + CORS no backend
-* [ ] Página **Login** (persistência do token + `/auth/me`)
-* [ ] Página **Feed** (listar; like/comentar activity)
-* [ ] Página **Busca/Explorar** (filtros por ano/gênero/gravadora)
-* [ ] Página **Detalhe do Disco** (adicionar à coleção, favoritar, avaliar, comentar, ver reviews)
-* [ ] Página **Minha Coleção** / **Favoritos**
-* [ ] **Perfil do Usuário** (seguir/unfollow, ver coleção/avaliações)
-* [ ] **DMs** (lista de conversas + chat em tempo real depois com WS)
-* [ ] UX: toasts, loading states, paginação (cursor no feed), vazio/erros
-
-### Backend (evoluções)
-
-* [ ] Paginação com cursor em `/feed`, `/records`, etc.
-* [ ] Validações (ex.: `rating` entre 0–10, tamanho de conteúdo)
-* [ ] Uniqueness e constraints robustas (follow único, conversa 1:1 única por par)
-* [ ] WebSockets para **DMs** e (talvez) feed ao vivo
-* [ ] Notificações (ex.: novo seguidor, novo comentário)
-* [ ] Upload/armazenamento de capas (opcional, S3/minio)
-* [ ] Logs estruturados (JSON) + correlação de request
-* [ ] Seeds de dados para dev (`db/seed.sql`)
-* [ ] Healthchecks e métricas (Prometheus/OTel)
-
-### Qualidade & DevOps
-
-* [ ] **pre-commit** (black, ruff) configurado
-* [ ] **pytest** com testes de integração (substituir/acompanhar o script bash)
-* [ ] **CI** (GitHub Actions): lint, build, testes com serviço Postgres
-* [ ] **CD** (deploy container em staging/prod)
-* [ ] Ambiente `.env` separado por stage + `pydantic-settings`
+  * [ ] `PUT /records/{id}/cover` (upload com imagem dummy)
+  * [ ] `DELETE /records/{id}/cover`
+  * [ ] `DELETE /collection/{id}`
+  * [ ] `GET /reviews/records/{id}/me` garantindo 0..5
+* [ ] Testes unitários backend (pytest) e frontend (vitest)
+* [ ] CI (Actions): lint, typecheck, tests
 
 ---
 
-## 🧭 TL;DR (dev loop)
+## 🔌 Endpoints principais (resumo)
 
-```bash
-# subir
-docker compose up -d --build
+* **Auth**:
+  `POST /auth/register` · `POST /auth/login` · `GET /auth/me`
+* **Records**:
+  `POST /records` · `GET /records?code|year|genre|label`
+  `POST /records/{id}/comments` · `GET /records/{id}/comments`
+  `PUT /records/{id}/cover` · `DELETE /records/{id}/cover`
+  *(futuro)* `GET /records/{id}`
+* **Collection**:
+  `POST /collection/{id}` · `PATCH /collection/{id}` (`is_favorite`)
+  `GET /collection/me` · `GET /collection/me/favorites`
+  `DELETE /collection/{id}`
+* **Reviews**:
+  `POST /reviews` (0..5, upsert)
+  `GET /reviews/records/{id}/me`
+* **Feed/Follow**:
+  `POST /users/{id}/follow` · `GET /feed`
+  `POST /feed/{activity_id}/like`
+  `POST /feed/{activity_id}/comments` · `GET /feed/{activity_id}/comments`
+* **DMs**:
+  `POST /conversations` · `POST /conversations/{id}/messages` · `GET /conversations/{id}/messages`
 
-# testar E2E
-cd backend
-make test
+---
 
-# logs
-docker compose logs -f backend
-```
+## 📋 Próximos passos sugeridos (curto prazo)
+
+* [ ] Backend: `GET /records/{id}`
+* [ ] Frontend: Detalhe do Disco usar `GET /records/{id}`
+* [ ] Script de testes: cobrir **upload/remover capa** e **remover da coleção**
+* [ ] UI de DMs (lista conversas + última mensagem, estados de leitura)
+* [ ] Página de Perfil + seguir/desseguir pela UI
+
+Se quiser, eu já te mando o **patch do script de testes** cobrindo capa/remover/coleção/minha avaliação.
