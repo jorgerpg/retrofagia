@@ -1,5 +1,5 @@
 # app/routers/reviews.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from uuid import UUID
 from ..deps import get_db, get_current_user
@@ -13,7 +13,6 @@ router = APIRouter(prefix="/reviews", tags=["reviews"])
 def create_or_update_review(payload: ReviewCreate,
                             db: Session = Depends(get_db),
                             current_user: User = Depends(get_current_user)):
-  # upsert por (user_id, record_id)
   rev = (db.query(Review)
            .filter(Review.user_id == current_user.id,
                    Review.record_id == payload.record_id)
@@ -36,8 +35,7 @@ def create_or_update_review(payload: ReviewCreate,
 def get_my_review(record_id: UUID,
                   db: Session = Depends(get_db),
                   current_user: User = Depends(get_current_user)):
-  rev = (db.query(Review)
-           .filter(Review.user_id == current_user.id,
-                   Review.record_id == record_id)
-           .first())
-  return rev  # pode ser None (sem avaliação)
+  return (db.query(Review)
+            .filter(Review.user_id == current_user.id,
+                    Review.record_id == record_id)
+            .first())
