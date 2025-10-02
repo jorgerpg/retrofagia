@@ -32,7 +32,7 @@ try:
       # ou especifique: ["Authorization", "Content-Type"]
       allow_headers=["*"],
       max_age=3600,
-      allow_private_network=True,         # ✅ PNA (Chrome/Edge)
+      # allow_private_network=True,         # ✅ PNA (Chrome/Edge)
   )
 except TypeError:
   # Starlette antigo não tem allow_private_network -> adiciona um OPTIONS manual com o header PNA

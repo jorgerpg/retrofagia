@@ -131,6 +131,23 @@ retrofagia/
 
 ## 🚀 Como rodar (dev)
 
+
+## ✅ Pré-requisitos
+
+* **Node.js**: Vite requer **Node 20.19+** ou **22.12+** (recomendado: Node 22 LTS).
+  Instalação com nvm:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"
+
+nvm install 22
+nvm use 22
+nvm alias default 22
+
+node -v  # deve mostrar v22.x
+```
+
 ### Requisitos
 
 * Docker & Docker Compose
@@ -279,5 +296,3 @@ Saída esperada: todos os testes “✅”.
 * [ ] Script de testes: cobrir **upload/remover capa** e **remover da coleção**
 * [ ] UI de DMs (lista conversas + última mensagem, estados de leitura)
 * [ ] Página de Perfil + seguir/desseguir pela UI
-
-Se quiser, eu já te mando o **patch do script de testes** cobrindo capa/remover/coleção/minha avaliação.
