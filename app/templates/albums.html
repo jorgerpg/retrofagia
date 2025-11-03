@@ -5,15 +5,16 @@
   <div class="column main-feed">
     <article class="card">
       <h1>Sua coleção</h1>
-      <form method="post" class="form inline-form">
+      <form method="post" class="form inline-form" enctype="multipart/form-data">
         <label>Título
           <input type="text" name="title" placeholder="Nome do álbum" required />
         </label>
         <label>Artista
           <input type="text" name="artist" placeholder="Artista ou banda" required />
         </label>
-        <label>Capa (URL)
-          <input type="url" name="cover_url" placeholder="https://..." />
+        <label>Capa
+          <input type="file" name="cover" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" />
+          <span class="input-hint muted">Opcional · PNG, JPG, GIF ou WEBP até 4MB.</span>
         </label>
         <button type="submit">Adicionar</button>
       </form>
@@ -23,7 +24,7 @@
       {% for album in albums %}
       <article class="card album-card">
         {% if album.cover_url %}
-        <img src="{{ album.cover_url }}" alt="Capa de {{ album.title }}" />
+        <img src="{{ album.cover_url | image_url }}" alt="Capa de {{ album.title }}" />
         {% endif %}
         <div class="album-meta">
           <h2>{{ album.title }}</h2>

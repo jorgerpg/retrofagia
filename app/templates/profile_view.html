@@ -6,7 +6,7 @@
     <article class="card profile-header">
       <div class="profile-cover">
         {% if user.avatar_url %}
-        <img src="{{ user.avatar_url }}" alt="Avatar de {{ user.username }}" />
+        <img src="{{ user.avatar_url | image_url }}" alt="Avatar de {{ user.username }}" />
         {% else %}
         <div class="avatar-placeholder">{{ user.username[0]|upper }}</div>
         {% endif %}
@@ -42,7 +42,7 @@
       </header>
       <div class="review-album">
         {% if review.album.cover_url %}
-        <img src="{{ review.album.cover_url }}" alt="Capa do álbum {{ review.album.title }}" />
+        <img src="{{ review.album.cover_url | image_url }}" alt="Capa do álbum {{ review.album.title }}" />
         {% endif %}
         <div>
           <h3>{{ review.album.title }}</h3>

@@ -14,6 +14,7 @@ from sqlalchemy import and_, or_
 
 from . import db
 from .models import Album, Follow, Message, Review, User
+from .storage import delete_image, save_image
 
 main_bp = Blueprint("main", __name__, template_folder="templates")
 
@@ -130,8 +131,8 @@ def follow_user(username):
 def edit_profile():
     if request.method == "POST":
         bio = request.form.get("bio", "").strip()
-        avatar_url = request.form.get("avatar_url", "").strip()
         username = request.form.get("username", "").strip()
+        avatar_file = request.files.get("avatar")
 
         if not username:
             flash("O nome de usuário é obrigatório.", "error")
@@ -144,7 +145,17 @@ def edit_profile():
             else:
                 current_user.username = username
                 current_user.bio = bio
-                current_user.avatar_url = avatar_url
+                if avatar_file and avatar_file.filename:
+                    try:
+                        new_avatar_path = save_image(avatar_file)
+                    except ValueError as exc:
+                        flash(str(exc), "error")
+                        db.session.rollback()
+                        db.session.refresh(current_user)
+                        return redirect(url_for("main.edit_profile"))
+                    else:
+                        delete_image(current_user.avatar_url)
+                        current_user.avatar_url = new_avatar_path
                 db.session.commit()
                 flash("Perfil atualizado.", "success")
 
@@ -170,15 +181,22 @@ def albums():
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         artist = request.form.get("artist", "").strip()
-        cover_url = request.form.get("cover_url", "").strip()
+        cover_file = request.files.get("cover")
 
         if not title or not artist:
             flash("Título e artista são obrigatórios.", "error")
         else:
+            cover_path = ""
+            if cover_file and cover_file.filename:
+                try:
+                    cover_path = save_image(cover_file)
+                except ValueError as exc:
+                    flash(str(exc), "error")
+                    return redirect(url_for("main.albums"))
             album = Album(
                 title=title,
                 artist=artist,
-                cover_url=cover_url,
+                cover_url=cover_path,
                 owner=current_user,
             )
             db.session.add(album)
@@ -199,6 +217,7 @@ def delete_album(album_id):
     album = Album.query.filter_by(id=album_id, user_id=current_user.id).first()
     if not album:
         abort(404)
+    delete_image(album.cover_url)
     db.session.delete(album)
     db.session.commit()
     flash("Álbum removido.", "success")

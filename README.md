@@ -12,6 +12,7 @@ Mini rede social para reviews de álbuns com chat privado, construída com Flask
 - Feed com reviews dos usuários seguidos.
 - Chats privados entre seguidores/seguidos com histórico ordenado.
 - Layout dark minimalista e responsivo, preparado para desktop e mobile.
+- Upload local de avatares e capas de álbuns com validação de formato.
 
 ## Requisitos
 
@@ -31,6 +32,16 @@ Mini rede social para reviews de álbuns com chat privado, construída com Flask
 
 3. Acesse o app em [http://localhost:5000](http://localhost:5000).
 
+## Mock de ações automáticas
+
+Para popular o ambiente com usuários, follows, álbuns, reviews e mensagens de exemplo, rode:
+
+```bash
+docker compose run --rm web python scripts/mock_actions.py
+```
+
+O script reinicializa o banco e os uploads, executa os fluxos principais (cadastro, login, uploads, follow, reviews, chat) via cliente de teste Flask e imprime um resumo das interações criadas.
+
 ## Estrutura
 
 - `app/`: Aplicação Flask
@@ -40,6 +51,8 @@ Mini rede social para reviews de álbuns com chat privado, construída com Flask
   - `main.py`: rotas do feed, perfil, coleção e chat
   - `templates/`: páginas HTML com Jinja2
   - `static/style.css`: tema escuro minimalista
+  - `static/uploads/`: arquivos enviados pelos usuários
+- `scripts/mock_actions.py`: script de mock para simular os fluxos da aplicação
 - `Dockerfile`: define a imagem do serviço web
 - `docker-compose.yml`: orquestra o app Flask e o PostgreSQL
 - `requirements.txt`: dependências Python
@@ -50,13 +63,14 @@ O `docker-compose.yml` define valores padrão:
 
 - `DATABASE_URL`: conexão com o Postgres
 - `SECRET_KEY`: chave para sessões Flask
+- `UPLOAD_FOLDER`: caminho (dentro do container) onde as imagens são salvas; padrão `app/static/uploads`
 
 Você pode sobrescrever os valores criando um arquivo `.env` na raiz ou definindo variáveis ao executar o compose.
 
 ## Próximos passos sugeridos
 
-- Adicionar envio de imagens e armazenamento local/S3 para avatares.
-- Implementar paginação no feed e nas reviews.
+- Implementar redimensionamento e otimização das imagens enviadas.
+- Persistir uploads em storage externo (S3, etc.) para ambientes de produção.
 - Criar testes automatizados para rotas críticas.
 - Adicionar notificações para novos follows e mensagens.
 

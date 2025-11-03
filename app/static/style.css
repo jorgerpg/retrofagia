@@ -160,6 +160,10 @@ a:hover {
   font-size: 0.9rem;
 }
 
+.input-hint {
+  font-size: 0.8rem;
+}
+
 .form input,
 .form select,
 .form textarea {
@@ -170,6 +174,12 @@ a:hover {
   background: rgba(10, 10, 10, 0.6);
   color: var(--text);
   font-size: 1rem;
+}
+
+.form input[type="file"] {
+  padding: 0.45rem 0;
+  border: none;
+  background: transparent;
 }
 
 .form textarea {

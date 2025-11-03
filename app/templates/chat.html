@@ -9,7 +9,7 @@
       <li class="{% if selected_user and selected_user.id == contact.id %}active{% endif %}">
         <a href="{{ url_for('main.chat', with_user=contact.id) }}">
           {% if contact.avatar_url %}
-          <img src="{{ contact.avatar_url }}" alt="Avatar de {{ contact.username }}" />
+          <img src="{{ contact.avatar_url | image_url }}" alt="Avatar de {{ contact.username }}" />
           {% else %}
           <div class="avatar-placeholder">{{ contact.username[0]|upper }}</div>
           {% endif %}
