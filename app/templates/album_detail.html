@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ album.title }} · retrofagia{% endblock %}
+{% block content %}
+<section class="card album-profile">
+  <div class="album-profile-head">
+    {% if cover_url %}
+    <img src="{{ cover_url | image_url }}" alt="Capa de {{ album.title }}" />
+    {% endif %}
+    <div class="album-profile-meta">
+      <h1>{{ album.title }}</h1>
+      <p class="muted">{{ album.artist }}</p>
+      <div class="album-profile-stats">
+        <span><strong>{{ review_count }}</strong> reviews</span>
+        {% if avg_rating %}
+        <span class="rating">Média {{ avg_rating }}★</span>
+        {% else %}
+        <span class="rating">Sem avaliações</span>
+        {% endif %}
+        <span>{{ unique_reviewer_count }} autores</span>
+      </div>
+      <div class="album-profile-actions">
+        {% if not user_album %}
+        <form method="post" action="{{ url_for('main.clone_album', album_id=album.id) }}">
+          <button type="submit">Adicionar à minha coleção</button>
+        </form>
+        {% elif not user_review %}
+        <form method="post" action="{{ url_for('main.feed') }}" class="form album-review-form">
+          <input type="hidden" name="album_id" value="{{ user_album.id }}" />
+          <label>Avaliação
+            <input type="number" name="rating" min="1" max="5" value="5" required />
+          </label>
+          <label>Comentário
+            <textarea name="content" rows="3" placeholder="Compartilhe sua opinião..." required></textarea>
+          </label>
+          <button type="submit">Publicar review</button>
+        </form>
+        {% else %}
+        <div class="album-profile-owner-actions">
+          <a class="button ghost" href="{{ url_for('main.edit_review', review_id=user_review.id) }}">Editar minha review</a>
+          <form method="post" action="{{ url_for('main.delete_review', review_id=user_review.id) }}">
+            <button type="submit" class="ghost danger">Excluir review</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="column main-feed">
+  {% for review in reviews %}
+  <article class="card review-card">
+    <header class="review-header">
+      <div class="review-user">
+        <a href="{{ url_for('main.view_profile', username=review.user.username) }}">
+          {% if review.user.avatar_url %}
+          <img src="{{ review.user.avatar_url | image_url }}" alt="Avatar de {{ review.user.username }}" />
+          {% else %}
+          <div class="avatar-placeholder">{{ review.user.username[0]|upper }}</div>
+          {% endif %}
+          <span>{{ review.user.username }}</span>
+        </a>
+      </div>
+      <span class="review-rating" aria-label="Avaliação: {{ review.rating }} de 5">
+        {% for _ in range(review.rating) %}<span>&#9733;</span>{% endfor %}
+        {% for _ in range(5 - review.rating) %}<span class="muted">&#9733;</span>{% endfor %}
+      </span>
+    </header>
+    <p class="review-content">{{ review.content }}</p>
+    <footer class="review-footer">
+      <span class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+      <div class="review-actions">
+        {% if review.user_id == current_user.id %}
+        <a class="button ghost" href="{{ url_for('main.edit_review', review_id=review.id) }}">Editar</a>
+        <form method="post" action="{{ url_for('main.delete_review', review_id=review.id) }}">
+          <button type="submit" class="ghost danger">Excluir</button>
+        </form>
+        {% endif %}
+      </div>
+    </footer>
+
+    <section class="comments">
+      <h4>Comentários</h4>
+      <div class="comments-list">
+        {% for comment in review.comments %}
+        <div class="comment">
+          <div class="comment-meta">
+            <a href="{{ url_for('main.view_profile', username=comment.user.username) }}">{{ comment.user.username }}</a>
+            <span class="timestamp">{{ comment.created_at.strftime('%d/%m %H:%M') }}</span>
+          </div>
+          <p>{{ comment.content }}</p>
+        </div>
+        {% else %}
+        <p class="muted">Seja o primeiro a comentar.</p>
+        {% endfor %}
+      </div>
+      <form method="post" action="{{ url_for('main.add_comment', review_id=review.id) }}" class="form inline-comment">
+        <textarea name="content" rows="2" placeholder="Escreva um comentário..." required></textarea>
+        <button type="submit">Enviar</button>
+      </form>
+    </section>
+  </article>
+  {% else %}
+  <article class="card empty">
+    <p>Sem reviews cadastradas ainda para este álbum.</p>
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Buscar · retrofagia{% endblock %}
+{% block content %}
+<section class="card wide">
+  <h1>Buscar</h1>
+  <form method="get" class="form search-form">
+    <label>Termo
+      <input type="search" name="q" placeholder="Procure perfis ou álbuns" value="{{ query }}" />
+    </label>
+    <label>Tipo
+      <select name="type">
+        <option value="all" {% if filter_type == 'all' %}selected{% endif %}>Tudo</option>
+        <option value="users" {% if filter_type == 'users' %}selected{% endif %}>Perfis</option>
+        <option value="albums" {% if filter_type == 'albums' %}selected{% endif %}>Álbuns</option>
+      </select>
+    </label>
+    <button type="submit">Buscar</button>
+  </form>
+</section>
+
+{% if query %}
+<section class="grid search-results">
+  {% if filter_type in ['all', 'users'] %}
+  <div class="column">
+    <article class="card">
+      <h2>Perfis</h2>
+      {% if user_results %}
+      <ul class="result-list">
+        {% for user in user_results %}
+        <li>
+          <div class="result-meta">
+            <a href="{{ url_for('main.view_profile', username=user.username) }}">{{ user.username }}</a>
+            {% if user.bio %}<p class="muted">{{ user.bio }}</p>{% endif %}
+          </div>
+          <form method="post" action="{{ url_for('main.follow_user', username=user.username) }}">
+            <button type="submit">
+              {% if current_user.is_following(user) %}Deixar de seguir{% else %}Seguir{% endif %}
+            </button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">Nenhum perfil encontrado.</p>
+      {% endif %}
+    </article>
+  </div>
+  {% endif %}
+
+  {% if filter_type in ['all', 'albums'] %}
+  <div class="column">
+    <article class="card">
+      <h2>Álbuns</h2>
+      {% if album_results %}
+      <ul class="result-list">
+        {% for album in album_results %}
+        <li>
+          <div class="result-meta">
+            <div class="album-inline">
+              {% if album.cover_url %}
+              <img src="{{ album.cover_url | image_url }}" alt="Capa de {{ album.title }}" />
+              {% endif %}
+              <div>
+                <h3>{{ album.title }}</h3>
+                <p class="muted">{{ album.artist }}</p>
+                <p class="muted">por {{ album.owner.username }}</p>
+              </div>
+            </div>
+          </div>
+          {% set signature = (album.title|lower, album.artist|lower) %}
+          <div class="result-actions">
+            <a class="button ghost" href="{{ url_for('main.album_detail', album_id=album.id) }}">Ver álbum</a>
+            {% if signature in owned_signatures %}
+            <span class="badge">Na sua coleção</span>
+            {% else %}
+            <form method="post" action="{{ url_for('main.clone_album', album_id=album.id) }}">
+              <button type="submit">Adicionar &amp; avaliar</button>
+            </form>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">Nenhum álbum encontrado.</p>
+      {% endif %}
+    </article>
+  </div>
+  {% endif %}
+</section>
+{% elif query == '' %}
+<section class="card empty">
+  <p>Digite um termo para pesquisar perfis ou álbuns.</p>
+</section>
+{% endif %}
+{% endblock %}

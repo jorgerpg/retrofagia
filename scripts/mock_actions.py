@@ -9,7 +9,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from app import create_app, db
-from app.models import Album, Follow, Message, Review, User
+from app.models import Album, Follow, Message, Review, ReviewComment, User
 
 PNG_PLACEHOLDER = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8"
@@ -164,6 +164,32 @@ def main():
         print("• Bob adicionou álbum e review")
 
         alice = User.query.filter_by(username="alice").first()
+        bob = User.query.filter_by(username="bob").first()
+
+        alice_review = (
+            Review.query.filter_by(user_id=alice.id)
+            .order_by(Review.created_at.desc())
+            .first()
+        )
+        bob_review = Review.query.filter_by(user_id=bob.id, album_id=bob_album.id).first()
+
+        client.post(
+            f"/reviews/{alice_review.id}/comments",
+            data={"content": "Comentário massa! Concordo demais."},
+            follow_redirects=True,
+        )
+        print("• Bob comentou na review da Alice")
+
+        client.post(
+            f"/reviews/{bob_review.id}/edit",
+            data={
+                "rating": "5",
+                "content": "Atualizei para 5★ depois de ouvir de novo com fones.",
+            },
+            follow_redirects=True,
+        )
+        print("• Bob ajustou a review para 5★")
+
         client.post(
             "/chat",
             data={
@@ -185,6 +211,14 @@ def main():
             album = Album.query.get(review.album_id)
             user = User.query.get(review.user_id)
             print(f"• {user.username} avaliou '{album.title}' com {review.rating}★")
+
+        for comment in ReviewComment.query.order_by(ReviewComment.created_at.asc()):
+            author = User.query.get(comment.user_id)
+            review = Review.query.get(comment.review_id)
+            album = Album.query.get(review.album_id)
+            print(
+                f"• Comentário de {author.username} em '{album.title}': {comment.content}"
+            )
 
         for message in Message.query.order_by(Message.created_at.asc()):
             sender = User.query.get(message.sender_id)

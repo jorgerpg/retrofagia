@@ -57,7 +57,39 @@
         </div>
       </div>
       <p class="review-content">{{ review.content }}</p>
-      <footer class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</footer>
+      <footer class="review-footer">
+        <span class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+        <div class="review-actions">
+          <a class="button ghost" href="{{ url_for('main.album_detail', album_id=review.album.id) }}">Ver álbum</a>
+          {% if review.user_id == current_user.id %}
+          <a class="button ghost" href="{{ url_for('main.edit_review', review_id=review.id) }}">Editar</a>
+          <form method="post" action="{{ url_for('main.delete_review', review_id=review.id) }}">
+            <button type="submit" class="ghost danger">Excluir</button>
+          </form>
+          {% endif %}
+        </div>
+      </footer>
+
+      <section class="comments">
+        <h4>Comentários</h4>
+        <div class="comments-list">
+          {% for comment in review.comments %}
+          <div class="comment">
+            <div class="comment-meta">
+              <a href="{{ url_for('main.view_profile', username=comment.user.username) }}">{{ comment.user.username }}</a>
+              <span class="timestamp">{{ comment.created_at.strftime('%d/%m %H:%M') }}</span>
+            </div>
+            <p>{{ comment.content }}</p>
+          </div>
+          {% else %}
+          <p class="muted">Seja o primeiro a comentar.</p>
+          {% endfor %}
+        </div>
+        <form method="post" action="{{ url_for('main.add_comment', review_id=review.id) }}" class="form inline-comment">
+          <textarea name="content" rows="2" placeholder="Escreva um comentário..." required></textarea>
+          <button type="submit">Enviar</button>
+        </form>
+      </section>
     </article>
     {% else %}
     <article class="card empty">

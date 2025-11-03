@@ -13,6 +13,9 @@ Mini rede social para reviews de álbuns com chat privado, construída com Flask
 - Chats privados entre seguidores/seguidos com histórico ordenado.
 - Layout dark minimalista e responsivo, preparado para desktop e mobile.
 - Upload local de avatares e capas de álbuns com validação de formato.
+- Busca por perfis e álbuns com atalho para seguir usuários ou adicionar discos à sua coleção.
+- Perfil de álbuns com estatísticas, todas as reviews e formulário rápido para avaliar.
+- Comentários em reviews e controles para editar ou excluir suas próprias avaliações.
 
 ## Requisitos
 
@@ -40,7 +43,7 @@ Para popular o ambiente com usuários, follows, álbuns, reviews e mensagens de 
 docker compose run --rm web python scripts/mock_actions.py
 ```
 
-O script reinicializa o banco e os uploads, executa os fluxos principais (cadastro, login, uploads, follow, reviews, chat) via cliente de teste Flask e imprime um resumo das interações criadas.
+O script reinicializa o banco e os uploads, executa os fluxos principais (cadastro, login, uploads, follow, reviews, comentários, edições, chat) via cliente de teste Flask e imprime um resumo das interações criadas.
 
 ## Estrutura
 

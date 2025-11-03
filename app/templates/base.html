@@ -12,6 +12,7 @@
       {% if current_user.is_authenticated %}
       <nav class="nav-links">
         <a href="{{ url_for('main.feed') }}">Feed</a>
+        <a href="{{ url_for('main.search') }}">Buscar</a>
         <a href="{{ url_for('main.albums') }}">Coleção</a>
         <a href="{{ url_for('main.chat') }}">Chats</a>
         <a href="{{ url_for('main.edit_profile') }}">Perfil</a>

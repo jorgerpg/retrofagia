@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Editar review · retrofagia{% endblock %}
+{% block content %}
+<section class="card wide">
+  <h1>Editar review</h1>
+  <div class="review-edit-meta">
+    <h2>{{ review.album.title }}</h2>
+    <p class="muted">{{ review.album.artist }}</p>
+  </div>
+  <form method="post" class="form">
+    <label>Avaliação
+      <input type="number" name="rating" min="1" max="5" value="{{ review.rating }}" required />
+    </label>
+    <label>Comentário
+      <textarea name="content" rows="4" required>{{ review.content }}</textarea>
+    </label>
+    <div class="review-edit-actions">
+      <button type="submit">Salvar alterações</button>
+      <a class="button ghost" href="{{ url_for('main.album_detail', album_id=review.album_id) }}">Cancelar</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

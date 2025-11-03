@@ -153,6 +153,11 @@ a:hover {
   gap: 1.25rem;
 }
 
+.search-form {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
+}
+
 .form label {
   display: grid;
   gap: 0.5rem;
@@ -224,6 +229,98 @@ button.ghost:hover {
 
 .inline-form label {
   color: var(--muted);
+}
+
+.review-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.review-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.review-actions form {
+  display: inline-flex;
+  margin: 0;
+}
+
+button.ghost.danger,
+.button.ghost.danger {
+  border-color: rgba(255, 92, 138, 0.6);
+  color: var(--danger);
+}
+
+button.ghost.danger:hover,
+.button.ghost.danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(255, 92, 138, 0.2);
+}
+
+.comments {
+  margin-top: 1.25rem;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.comments h4 {
+  margin: 0;
+}
+
+.comments-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.comment-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.comment-meta a {
+  font-weight: 600;
+}
+
+.comment {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.comment p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.comments-list > p {
+  margin: 0;
+}
+
+.inline-comment {
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.inline-comment textarea {
+  min-height: 64px;
+}
+
+.inline-comment button {
+  justify-self: end;
 }
 
 .review-card header {
@@ -303,11 +400,150 @@ button.ghost:hover {
   margin-top: 1.5rem;
 }
 
+.album-profile {
+  margin-bottom: 2rem;
+}
+
+.album-profile-head {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: center;
+}
+
+.album-profile-head img {
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.album-profile-meta {
+  display: grid;
+  gap: 1rem;
+}
+
+.album-profile-stats {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: var(--muted);
+}
+
+.album-profile-stats .rating {
+  color: var(--accent);
+}
+
+.album-profile-actions {
+  display: grid;
+  gap: 1rem;
+}
+
+.album-profile-owner-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.album-profile-owner-actions form {
+  margin: 0;
+}
+
+.album-review-form {
+  gap: 1rem;
+}
+
+.review-edit-meta {
+  margin-bottom: 1rem;
+}
+
+.review-edit-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.search-results {
+  margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.result-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.result-list li:last-child {
+  border-bottom: none;
+}
+
+.result-meta h3 {
+  margin: 0;
+}
+
+.album-inline {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.album-inline img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.result-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.result-actions form {
+  display: inline-flex;
+  margin: 0;
+}
+
+.badge {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(92, 108, 255, 0.18);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .album-card {
   display: grid;
   grid-template-columns: 120px 1fr auto;
   gap: 1.25rem;
   align-items: center;
+}
+
+.album-card .album-link {
+  display: block;
+  width: 120px;
+  height: 120px;
 }
 
 .album-card img {
@@ -316,6 +552,18 @@ button.ghost:hover {
   border-radius: 12px;
   object-fit: cover;
   border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.album-cover-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  font-weight: 600;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
 }
 
 .profile-header {
@@ -490,5 +738,22 @@ button.ghost:hover {
 
   .album-card {
     grid-template-columns: 72px 1fr auto;
+  }
+
+  .review-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .inline-comment {
+    grid-template-columns: 1fr;
+  }
+
+  .inline-comment button {
+    width: 100%;
+  }
+
+  .album-profile-head {
+    grid-template-columns: 1fr;
   }
 }

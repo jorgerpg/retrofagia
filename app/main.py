@@ -10,11 +10,11 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_
 
 from . import db
-from .models import Album, Follow, Message, Review, User
-from .storage import delete_image, save_image
+from .models import Album, Follow, Message, Review, ReviewComment, User
+from .storage import clone_image, delete_image, save_image
 
 main_bp = Blueprint("main", __name__, template_folder="templates")
 
@@ -224,6 +224,165 @@ def delete_album(album_id):
     return redirect(url_for("main.albums"))
 
 
+@main_bp.route("/albums/<int:album_id>/clone", methods=["POST"])
+@login_required
+def clone_album(album_id):
+    source_album = Album.query.get_or_404(album_id)
+
+    if source_album.user_id == current_user.id:
+        flash("Este álbum já está na sua coleção.", "info")
+        return redirect(request.referrer or url_for("main.feed"))
+
+    existing = (
+        Album.query.filter_by(user_id=current_user.id)
+        .filter(
+            func.lower(Album.title) == source_album.title.lower(),
+            func.lower(Album.artist) == source_album.artist.lower(),
+        )
+        .first()
+    )
+    if existing:
+        flash("Este álbum já está na sua coleção.", "info")
+        return redirect(request.referrer or url_for("main.feed"))
+
+    cover_path = source_album.cover_url
+    if cover_path:
+        cover_path = clone_image(cover_path)
+
+    cloned = Album(
+        title=source_album.title,
+        artist=source_album.artist,
+        cover_url=cover_path,
+        owner=current_user,
+    )
+    db.session.add(cloned)
+    db.session.commit()
+    flash("Álbum adicionado à sua coleção. Publique sua review no feed!", "success")
+    return redirect(url_for("main.feed"))
+
+
+@main_bp.route("/albums/<int:album_id>")
+@login_required
+def album_detail(album_id):
+    album = Album.query.get_or_404(album_id)
+
+    title_key = album.title.lower()
+    artist_key = album.artist.lower()
+
+    matching_albums = (
+        Album.query.filter(
+            func.lower(Album.title) == title_key,
+            func.lower(Album.artist) == artist_key,
+        ).all()
+    )
+    album_ids = [a.id for a in matching_albums] or [album.id]
+
+    reviews = (
+        Review.query.filter(Review.album_id.in_(album_ids))
+        .order_by(Review.created_at.desc())
+        .all()
+    )
+
+    avg_rating = (
+        db.session.query(func.avg(Review.rating))
+        .filter(Review.album_id.in_(album_ids))
+        .scalar()
+    )
+    avg_rating = round(float(avg_rating), 1) if avg_rating else None
+    review_count = len(reviews)
+
+    user_album = next((a for a in matching_albums if a.user_id == current_user.id), None)
+    user_review = next((r for r in reviews if r.user_id == current_user.id), None)
+
+    unique_reviewer_count = len({review.user_id for review in reviews})
+
+    cover_url = album.cover_url
+    if not cover_url:
+        for candidate in matching_albums:
+            if candidate.cover_url:
+                cover_url = candidate.cover_url
+                break
+
+    return render_template(
+        "album_detail.html",
+        album=album,
+        cover_url=cover_url,
+        reviews=reviews,
+        avg_rating=avg_rating,
+        review_count=review_count,
+        user_album=user_album,
+        user_review=user_review,
+        unique_reviewer_count=unique_reviewer_count,
+    )
+
+
+@main_bp.route("/reviews/<int:review_id>/comments", methods=["POST"])
+@login_required
+def add_comment(review_id):
+    review = Review.query.get_or_404(review_id)
+    content = request.form.get("content", "").strip()
+
+    if not content:
+        flash("Digite um comentário antes de enviar.", "error")
+        return redirect(request.referrer or url_for("main.feed"))
+
+    if len(content) > 600:
+        flash("O comentário pode ter no máximo 600 caracteres.", "error")
+        return redirect(request.referrer or url_for("main.feed"))
+
+    comment = ReviewComment(review_id=review.id, user_id=current_user.id, content=content)
+    db.session.add(comment)
+    db.session.commit()
+    flash("Comentário publicado.", "success")
+    return redirect(request.referrer or url_for("main.feed"))
+
+
+@main_bp.route("/reviews/<int:review_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_review(review_id):
+    review = Review.query.get_or_404(review_id)
+    if review.user_id != current_user.id:
+        abort(403)
+
+    if request.method == "POST":
+        rating_raw = request.form.get("rating")
+        content = request.form.get("content", "").strip()
+
+        try:
+            rating_value = int(rating_raw)
+        except (TypeError, ValueError):
+            rating_value = None
+
+        if rating_value is None or rating_value < 1 or rating_value > 5:
+            flash("A avaliação deve ser um número entre 1 e 5.", "error")
+        elif not content:
+            flash("Escreva algo sobre o álbum.", "error")
+        elif len(content) > 4000:
+            flash("A review pode ter no máximo 4000 caracteres.", "error")
+        else:
+            review.rating = rating_value
+            review.content = content
+            db.session.commit()
+            flash("Review atualizada.", "success")
+            return redirect(url_for("main.album_detail", album_id=review.album_id))
+
+    return render_template("review_edit.html", review=review)
+
+
+@main_bp.route("/reviews/<int:review_id>/delete", methods=["POST"])
+@login_required
+def delete_review(review_id):
+    review = Review.query.get_or_404(review_id)
+    if review.user_id != current_user.id:
+        abort(403)
+
+    album_id = review.album_id
+    db.session.delete(review)
+    db.session.commit()
+    flash("Review removida.", "success")
+    return redirect(request.referrer or url_for("main.album_detail", album_id=album_id))
+
+
 @main_bp.route("/chat", methods=["GET", "POST"])
 @login_required
 def chat():
@@ -296,4 +455,64 @@ def chat():
         contacts=contacts,
         selected_user=selected_user,
         conversation=conversation,
+    )
+
+
+@main_bp.route("/search")
+@login_required
+def search():
+    query = request.args.get("q", "").strip()
+    filter_type = request.args.get("type", "all")
+    user_results = []
+    album_results = []
+
+    if query:
+        like_term = f"%{query.lower()}%"
+        if filter_type in ("all", "users"):
+            user_results = (
+                User.query.filter(User.id != current_user.id)
+                .filter(
+                    or_(
+                        func.lower(User.username).like(like_term),
+                        func.lower(User.bio).like(like_term),
+                    )
+                )
+                .order_by(User.username.asc())
+                .limit(20)
+                .all()
+            )
+        if filter_type in ("all", "albums"):
+            album_results = (
+                Album.query.join(User, Album.user_id == User.id)
+                .filter(
+                    or_(
+                        func.lower(Album.title).like(like_term),
+                        func.lower(Album.artist).like(like_term),
+                    )
+                )
+                .order_by(Album.created_at.desc())
+                .limit(20)
+                .all()
+            )
+            unique_albums = []
+            seen_keys = set()
+            for album in album_results:
+                key = (album.title.lower(), album.artist.lower())
+                if key in seen_keys:
+                    continue
+                unique_albums.append(album)
+                seen_keys.add(key)
+            album_results = unique_albums
+
+    owned_signatures = {
+        (album.title.lower(), album.artist.lower()) for album in current_user.albums
+    }
+
+    return render_template(
+        "search.html",
+        query=query,
+        filter_type=filter_type,
+        user_results=user_results,
+        album_results=album_results,
+        owned_signatures=owned_signatures,
     )

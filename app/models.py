@@ -46,6 +46,11 @@ class User(UserMixin, db.Model):
         back_populates="receiver",
         cascade="all,delete",
     )
+    comments = db.relationship(
+        "ReviewComment",
+        back_populates="user",
+        cascade="all,delete",
+    )
 
     def set_password(self, password: str) -> None:
         self.password_hash = generate_password_hash(password)
@@ -83,6 +88,12 @@ class Review(db.Model):
 
     user = db.relationship("User", back_populates="reviews")
     album = db.relationship("Album", back_populates="reviews")
+    comments = db.relationship(
+        "ReviewComment",
+        back_populates="review",
+        cascade="all,delete-orphan",
+        order_by="ReviewComment.created_at.asc()",
+    )
 
     __table_args__ = (
         db.CheckConstraint("rating >= 1 AND rating <= 5", name="check_rating_range"),
@@ -109,6 +120,19 @@ class Message(db.Model):
     receiver = db.relationship(
         "User", foreign_keys=[receiver_id], back_populates="messages_received"
     )
+
+
+class ReviewComment(db.Model):
+    __tablename__ = "review_comments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    review_id = db.Column(db.Integer, db.ForeignKey("reviews.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    review = db.relationship("Review", back_populates="comments")
+    user = db.relationship("User", back_populates="comments")
 
 
 @login_manager.user_loader

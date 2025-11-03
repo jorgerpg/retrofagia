@@ -1,4 +1,5 @@
 import os
+import shutil
 import uuid
 from typing import Optional
 
@@ -36,6 +37,29 @@ def save_image(file_storage: Optional[FileStorage]) -> str:
     static_dir = os.path.join(current_app.root_path, "static")
     relative_path = os.path.relpath(file_path, static_dir)
     return relative_path.replace("\\", "/")
+
+
+def clone_image(relative_path: str) -> str:
+    """Duplicate an existing static image, returning the new relative path."""
+    if not relative_path:
+        return ""
+    if relative_path.startswith(("http://", "https://")):
+        return relative_path
+
+    static_dir = os.path.join(current_app.root_path, "static")
+    source_path = os.path.join(static_dir, relative_path)
+    if not os.path.isfile(source_path):
+        return ""
+
+    _, ext = os.path.splitext(source_path)
+    ext = ext.lower()
+    upload_dir = _ensure_upload_folder()
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    destination = os.path.join(upload_dir, unique_name)
+    shutil.copy2(source_path, destination)
+
+    new_relative = os.path.relpath(destination, static_dir)
+    return new_relative.replace("\\", "/")
 
 
 def delete_image(relative_path: str) -> None:
