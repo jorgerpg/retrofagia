@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Chats · retrofagia{% endblock %}
+{% block content %}
+<section class="chat-layout">
+  <aside class="chat-sidebar">
+    <h2>Conversas</h2>
+    <ul>
+      {% for contact in contacts %}
+      <li class="{% if selected_user and selected_user.id == contact.id %}active{% endif %}">
+        <a href="{{ url_for('main.chat', with_user=contact.id) }}">
+          {% if contact.avatar_url %}
+          <img src="{{ contact.avatar_url }}" alt="Avatar de {{ contact.username }}" />
+          {% else %}
+          <div class="avatar-placeholder">{{ contact.username[0]|upper }}</div>
+          {% endif %}
+          <span>{{ contact.username }}</span>
+        </a>
+      </li>
+      {% else %}
+      <li class="muted">Sem contatos ainda. Siga pessoas para começar.</li>
+      {% endfor %}
+    </ul>
+  </aside>
+
+  <div class="chat-thread">
+    {% if selected_user %}
+    <header class="chat-header">
+      <h2>{{ selected_user.username }}</h2>
+    </header>
+    <div class="chat-messages">
+      {% for message in conversation %}
+      <div class="message {% if message.sender_id == current_user.id %}from-me{% else %}from-them{% endif %}">
+        <p>{{ message.content }}</p>
+        <span class="timestamp">{{ message.created_at.strftime('%d/%m %H:%M') }}</span>
+      </div>
+      {% else %}
+      <p class="muted">Nenhuma mensagem ainda. Envie a primeira!</p>
+      {% endfor %}
+    </div>
+    <form method="post" class="form chat-form">
+      <input type="hidden" name="recipient_id" value="{{ selected_user.id }}" />
+      <textarea name="content" rows="2" placeholder="Digite sua mensagem..." required></textarea>
+      <button type="submit">Enviar</button>
+    </form>
+    {% else %}
+    <div class="empty-chat">
+      <p>Selecione um contato para começar a conversar.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

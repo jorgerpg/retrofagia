@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ user.username }} · retrofagia{% endblock %}
+{% block content %}
+<section class="grid">
+  <div class="column main-feed">
+    <article class="card profile-header">
+      <div class="profile-cover">
+        {% if user.avatar_url %}
+        <img src="{{ user.avatar_url }}" alt="Avatar de {{ user.username }}" />
+        {% else %}
+        <div class="avatar-placeholder">{{ user.username[0]|upper }}</div>
+        {% endif %}
+        <div>
+          <h1>{{ user.username }}</h1>
+          {% if user.bio %}
+          <p>{{ user.bio }}</p>
+          {% else %}
+          <p class="muted">Sem bio por enquanto.</p>
+          {% endif %}
+          <p class="muted">Desde {{ user.created_at.strftime('%d/%m/%Y') }}</p>
+        </div>
+      </div>
+      {% if current_user.id != user.id %}
+      <form method="post" action="{{ url_for('main.follow_user', username=user.username) }}">
+        <button type="submit">
+          {% if current_user.is_following(user) %}Deixar de seguir{% else %}Seguir{% endif %}
+        </button>
+      </form>
+      {% endif %}
+    </article>
+
+    {% for review in reviews %}
+    <article class="card review-card">
+      <header class="review-header">
+        <div class="review-user">
+          <span>{{ user.username }}</span>
+        </div>
+        <span class="review-rating">
+          {% for _ in range(review.rating) %}<span>&#9733;</span>{% endfor %}
+          {% for _ in range(5 - review.rating) %}<span class="muted">&#9733;</span>{% endfor %}
+        </span>
+      </header>
+      <div class="review-album">
+        {% if review.album.cover_url %}
+        <img src="{{ review.album.cover_url }}" alt="Capa do álbum {{ review.album.title }}" />
+        {% endif %}
+        <div>
+          <h3>{{ review.album.title }}</h3>
+          <p class="muted">{{ review.album.artist }}</p>
+        </div>
+      </div>
+      <p class="review-content">{{ review.content }}</p>
+      <footer class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</footer>
+    </article>
+    {% else %}
+    <article class="card empty">
+      <p>Nenhuma review publicada por aqui ainda.</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Editar perfil · retrofagia{% endblock %}
+{% block content %}
+<section class="card wide">
+  <h1>Seu perfil</h1>
+  <form method="post" class="form">
+    <label>Nome de usuário
+      <input type="text" name="username" value="{{ current_user.username }}" required />
+    </label>
+    <label>Bio
+      <textarea name="bio" rows="4" placeholder="Conte um pouco sobre você...">{{ current_user.bio }}</textarea>
+    </label>
+    <label>URL do avatar
+      <input type="url" name="avatar_url" value="{{ current_user.avatar_url }}" placeholder="https://..." />
+    </label>
+    <button type="submit">Salvar alterações</button>
+  </form>
+</section>
+{% endblock %}

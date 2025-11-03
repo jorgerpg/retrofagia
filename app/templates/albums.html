@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Coleção · retrofagia{% endblock %}
+{% block content %}
+<section class="grid">
+  <div class="column main-feed">
+    <article class="card">
+      <h1>Sua coleção</h1>
+      <form method="post" class="form inline-form">
+        <label>Título
+          <input type="text" name="title" placeholder="Nome do álbum" required />
+        </label>
+        <label>Artista
+          <input type="text" name="artist" placeholder="Artista ou banda" required />
+        </label>
+        <label>Capa (URL)
+          <input type="url" name="cover_url" placeholder="https://..." />
+        </label>
+        <button type="submit">Adicionar</button>
+      </form>
+    </article>
+
+    <div class="album-grid">
+      {% for album in albums %}
+      <article class="card album-card">
+        {% if album.cover_url %}
+        <img src="{{ album.cover_url }}" alt="Capa de {{ album.title }}" />
+        {% endif %}
+        <div class="album-meta">
+          <h2>{{ album.title }}</h2>
+          <p class="muted">{{ album.artist }}</p>
+        </div>
+        <form method="post" action="{{ url_for('main.delete_album', album_id=album.id) }}">
+          <button type="submit" class="ghost">Remover</button>
+        </form>
+      </article>
+      {% else %}
+      <article class="card empty">
+        <p>Sem álbuns cadastrados. Use o formulário acima para começar.</p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

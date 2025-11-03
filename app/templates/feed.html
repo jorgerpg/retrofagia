@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Feed · retrofagia{% endblock %}
+{% block content %}
+<section class="grid">
+  <div class="column main-feed">
+    <article class="card">
+      <h2>Nova review</h2>
+      {% if albums %}
+      <form method="post" class="form inline-form">
+        <label>Álbum
+          <select name="album_id" required>
+            <option value="" disabled selected>Selecione</option>
+            {% for album in albums %}
+            <option value="{{ album.id }}">{{ album.title }} · {{ album.artist }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Avaliação
+          <input type="number" name="rating" min="1" max="5" value="5" required />
+        </label>
+        <label>Comentário
+          <textarea name="content" rows="3" placeholder="Compartilhe sua opinião..." required></textarea>
+        </label>
+        <button type="submit">Publicar</button>
+      </form>
+      {% else %}
+      <p>Cadastre álbuns na sua coleção para publicar reviews.</p>
+      <a class="button ghost" href="{{ url_for('main.albums') }}">Ir para coleção</a>
+      {% endif %}
+    </article>
+
+    {% for review in reviews %}
+    <article class="card review-card">
+      <header class="review-header">
+        <div class="review-user">
+          <a href="{{ url_for('main.view_profile', username=review.user.username) }}">
+            {% if review.user.avatar_url %}
+            <img src="{{ review.user.avatar_url }}" alt="Avatar de {{ review.user.username }}" />
+            {% else %}
+            <div class="avatar-placeholder">{{ review.user.username[0]|upper }}</div>
+            {% endif %}
+            <span>{{ review.user.username }}</span>
+          </a>
+        </div>
+        <span class="review-rating" aria-label="Avaliação: {{ review.rating }} de 5">
+          {% for _ in range(review.rating) %}<span>&#9733;</span>{% endfor %}
+          {% for _ in range(5 - review.rating) %}<span class="muted">&#9733;</span>{% endfor %}
+        </span>
+      </header>
+      <div class="review-album">
+        {% if review.album.cover_url %}
+        <img src="{{ review.album.cover_url }}" alt="Capa do álbum {{ review.album.title }}" />
+        {% endif %}
+        <div>
+          <h3>{{ review.album.title }}</h3>
+          <p class="muted">{{ review.album.artist }}</p>
+        </div>
+      </div>
+      <p class="review-content">{{ review.content }}</p>
+      <footer class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</footer>
+    </article>
+    {% else %}
+    <article class="card empty">
+      <p>Nenhuma review ainda. Siga pessoas para ver atualizações por aqui.</p>
+    </article>
+    {% endfor %}
+  </div>
+
+  <aside class="column sidebar">
+    <div class="card">
+      <h2>Sugestões</h2>
+      {% if suggested_users %}
+      <ul class="suggestions">
+        {% for user in suggested_users %}
+        <li>
+          <div>
+            <a href="{{ url_for('main.view_profile', username=user.username) }}">{{ user.username }}</a>
+            <p class="muted">Entrou {{ user.created_at.strftime('%d/%m/%Y') }}</p>
+          </div>
+          <form method="post" action="{{ url_for('main.follow_user', username=user.username) }}">
+            <button type="submit">Seguir</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">Nenhuma sugestão no momento.</p>
+      {% endif %}
+    </div>
+  </aside>
+</section>
+{% endblock %}

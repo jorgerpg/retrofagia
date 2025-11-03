@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Criar conta · retrofagia{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <h1>Criar conta</h1>
+  <form method="post" class="form">
+    <label>Nome de usuário
+      <input name="username" type="text" placeholder="apelido" required />
+    </label>
+    <label>Email
+      <input name="email" type="email" placeholder="voce@dominio.com" required />
+    </label>
+    <label>Senha
+      <input name="password" type="password" placeholder="••••••••" required />
+    </label>
+    <label>Confirmar senha
+      <input name="confirm" type="password" placeholder="repetir senha" required />
+    </label>
+    <button type="submit">Registrar</button>
+  </form>
+  <p class="auth-switch">
+    Já tem conta?
+    <a href="{{ url_for('auth.login') }}">Entrar</a>
+  </p>
+</section>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Entrar · retrofagia{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <h1>Entrar</h1>
+  <form method="post" class="form">
+    <label>Email
+      <input name="email" type="email" placeholder="voce@dominio.com" required />
+    </label>
+    <label>Senha
+      <input name="password" type="password" placeholder="••••••••" required />
+    </label>
+    <button type="submit">Acessar</button>
+  </form>
+  <p class="auth-switch">
+    Não tem conta?
+    <a href="{{ url_for('auth.register') }}">Cadastre-se</a>
+  </p>
+</section>
+{% endblock %}
