@@ -23,6 +23,19 @@ body {
   font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
   background: radial-gradient(circle at top left, #111 0%, #050505 45%, #000 100%);
   color: var(--text);
+  padding-bottom: 88px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 a {
@@ -38,6 +51,8 @@ a:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
   padding: 1.25rem 2rem;
   background: rgba(5, 5, 5, 0.9);
   border-bottom: 1px solid var(--border);
@@ -49,28 +64,109 @@ a:hover {
 
 .brand {
   font-weight: 600;
-  letter-spacing: 0.18rem;
+  letter-spacing: 0.2rem;
   text-transform: uppercase;
 }
 
-.nav-links {
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1 1 220px;
+  min-width: 0;
+  justify-content: space-between;
+}
+
+.search-button,
+.logout-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.search-button:hover,
+.search-button:focus-visible,
+.logout-button:hover,
+.logout-button:focus-visible {
+  background: rgba(92, 108, 255, 0.18);
+  border-color: rgba(92, 108, 255, 0.4);
+}
+
+.logout-button {
+  margin-left: auto;
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.logout-button:hover,
+.logout-button:focus-visible {
+  background: rgba(255, 92, 138, 0.2);
+  border-color: rgba(255, 92, 138, 0.5);
+}
+
+.search-button svg,
+.logout-button svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  fill: none;
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   gap: 1rem;
+  padding: 0.75rem 1.4rem;
+  background: rgba(10, 10, 10, 0.92);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  z-index: 11;
+  width: min(420px, calc(100% - 3rem));
+}
+
+.bottom-nav-item {
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
-.nav-links a {
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  transition: background 160ms ease;
+.bottom-nav-item:hover,
+.bottom-nav-item:focus-visible {
+  background: rgba(92, 108, 255, 0.2);
+  border-color: rgba(92, 108, 255, 0.35);
 }
 
-.nav-links a:hover {
-  background: rgba(92, 108, 255, 0.16);
+.bottom-nav-item svg {
+  width: 26px;
+  height: 26px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
 }
 
-.nav-links .logout {
-  color: var(--muted);
+.bottom-nav-item.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
 }
 
 .content {
@@ -336,6 +432,12 @@ button.ghost.danger:hover,
   gap: 0.75rem;
 }
 
+.review-user a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .review-user img,
 .avatar-placeholder {
   width: 42px;
@@ -359,14 +461,15 @@ button.ghost.danger:hover,
 
 .review-album {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: minmax(0, 92px) minmax(0, 1fr);
   gap: 1rem;
   margin: 1rem 0;
+  align-items: start;
 }
 
 .review-album img {
-  width: 96px;
-  height: 96px;
+  width: 92px;
+  height: 92px;
   object-fit: cover;
   border-radius: 0.75rem;
 }
@@ -583,6 +686,14 @@ button.ghost.danger:hover,
   font-size: 3rem;
 }
 
+.album-cover-placeholder.large {
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 1;
+  height: auto;
+  font-size: 3rem;
+}
+
 .profile-header {
   display: flex;
   justify-content: space-between;
@@ -730,36 +841,111 @@ button.ghost.danger:hover,
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 720px) {
+  body {
+    padding-bottom: 96px;
+  }
+
   .topbar {
-    flex-direction: column;
+    padding: 1rem 1.25rem;
+  }
+
+  .brand-row {
+    flex: 1 1 auto;
+  }
+
+  .search-button,
+  .logout-button {
+    width: 38px;
+    height: 38px;
+  }
+
+  .bottom-nav {
+    width: calc(100% - 2.5rem);
+    bottom: 14px;
+    padding: 0.65rem 1rem;
+    justify-content: space-between;
+  }
+
+  .bottom-nav-item {
+    width: 48px;
+    height: 48px;
+  }
+
+  .content {
+    padding-bottom: 4rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  .form {
+    gap: 1rem;
+  }
+
+  .review-card {
     gap: 0.75rem;
   }
 
-  .nav-links {
+  .review-card header {
     flex-wrap: wrap;
-    justify-content: center;
+    gap: 0.6rem;
   }
 
+  .review-rating {
+    order: 2;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.18rem;
+  }
+
+  .review-album {
+    grid-template-columns: minmax(0, 68px) minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .review-album img {
+    width: 68px;
+    height: 68px;
+  }
+
+  .album-card {
+    grid-template-columns: 60px 1fr;
+    gap: 0.75rem;
+  }
+
+  .album-card form {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+
+  .album-card .album-link,
+  .album-card img,
+  .album-cover-placeholder {
+    width: 60px;
+    height: 60px;
+  }
+
+  .album-cover-placeholder.large {
+    max-width: 180px;
+  }
+}
+
+@media (max-width: 600px) {
   .content {
     padding: 0 1rem 2rem;
   }
 
   .card {
-    padding: 1.25rem;
-  }
-
-  .review-album {
-    grid-template-columns: 72px 1fr;
-  }
-
-  .album-card {
-    grid-template-columns: 72px 1fr auto;
+    padding: 1.2rem;
   }
 
   .review-footer {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.5rem;
   }
 
   .inline-comment {
@@ -772,5 +958,15 @@ button.ghost.danger:hover,
 
   .album-profile-head {
     grid-template-columns: 1fr;
+  }
+
+  .review-album {
+    grid-template-columns: 1fr;
+  }
+
+  .review-album img {
+    width: 100%;
+    max-width: 160px;
+    justify-self: start;
   }
 }
