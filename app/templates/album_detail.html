@@ -5,6 +5,8 @@
   <div class="album-profile-head">
     {% if cover_url %}
     <img src="{{ cover_url | image_url }}" alt="Capa de {{ album.title }}" />
+    {% else %}
+    <div class="album-cover-placeholder large">{{ album.title[0]|upper }}</div>
     {% endif %}
     <div class="album-profile-meta">
       <h1>{{ album.title }}</h1>
@@ -20,7 +22,7 @@
       </div>
       <div class="album-profile-actions">
         {% if not user_album %}
-        <form method="post" action="{{ url_for('main.clone_album', album_id=album.id) }}">
+        <form method="post" action="{{ url_for('main.clone_album', album_id=canonical_album_id) }}">
           <button type="submit">Adicionar à minha coleção</button>
         </form>
         {% elif not user_review %}
@@ -41,6 +43,15 @@
             <button type="submit" class="ghost danger">Excluir review</button>
           </form>
         </div>
+        {% endif %}
+
+        {% if user_album %}
+        <form method="post" action="{{ url_for('main.update_album_cover', album_id=user_album.id) }}" enctype="multipart/form-data" class="form inline-upload">
+          <label>Atualizar capa
+            <input type="file" name="cover" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" required />
+          </label>
+          <button type="submit">Salvar capa personalizada</button>
+        </form>
         {% endif %}
       </div>
     </div>

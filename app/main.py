@@ -276,6 +276,8 @@ def album_detail(album_id):
         ).all()
     )
     album_ids = [a.id for a in matching_albums] or [album.id]
+    matching_albums_sorted = sorted(matching_albums, key=lambda a: a.created_at)
+    canonical_album = matching_albums_sorted[0] if matching_albums_sorted else album
 
     reviews = (
         Review.query.filter(Review.album_id.in_(album_ids))
@@ -296,9 +298,13 @@ def album_detail(album_id):
 
     unique_reviewer_count = len({review.user_id for review in reviews})
 
-    cover_url = album.cover_url
-    if not cover_url:
-        for candidate in matching_albums:
+    cover_url = None
+    if user_album and user_album.cover_url:
+        cover_url = user_album.cover_url
+    elif album.cover_url:
+        cover_url = album.cover_url
+    else:
+        for candidate in matching_albums_sorted:
             if candidate.cover_url:
                 cover_url = candidate.cover_url
                 break
@@ -313,7 +319,31 @@ def album_detail(album_id):
         user_album=user_album,
         user_review=user_review,
         unique_reviewer_count=unique_reviewer_count,
+        canonical_album_id=canonical_album.id,
     )
+
+
+@main_bp.route("/albums/<int:album_id>/cover", methods=["POST"])
+@login_required
+def update_album_cover(album_id):
+    album = Album.query.filter_by(id=album_id, user_id=current_user.id).first_or_404()
+    file = request.files.get("cover")
+
+    if not file or not file.filename:
+        flash("Envie uma imagem para atualizar a capa.", "error")
+        return redirect(request.referrer or url_for("main.album_detail", album_id=album_id))
+
+    try:
+        new_path = save_image(file)
+    except ValueError as exc:
+        flash(str(exc), "error")
+        return redirect(request.referrer or url_for("main.album_detail", album_id=album_id))
+
+    delete_image(album.cover_url)
+    album.cover_url = new_path
+    db.session.commit()
+    flash("Capa do álbum atualizada.", "success")
+    return redirect(request.referrer or url_for("main.album_detail", album_id=album_id))
 
 
 @main_bp.route("/reviews/<int:review_id>/comments", methods=["POST"])
@@ -490,8 +520,8 @@ def search():
                         func.lower(Album.artist).like(like_term),
                     )
                 )
-                .order_by(Album.created_at.desc())
-                .limit(20)
+                .order_by(Album.created_at.asc())
+                .limit(40)
                 .all()
             )
             unique_albums = []

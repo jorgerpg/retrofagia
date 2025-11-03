@@ -16,6 +16,7 @@ Mini rede social para reviews de álbuns com chat privado, construída com Flask
 - Busca por perfis e álbuns com atalho para seguir usuários ou adicionar discos à sua coleção.
 - Perfil de álbuns com estatísticas, todas as reviews e formulário rápido para avaliar.
 - Comentários em reviews e controles para editar ou excluir suas próprias avaliações.
+- Capa de álbum compartilhada automaticamente e personalização individual da imagem em cada coleção.
 
 ## Requisitos
 
