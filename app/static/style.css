@@ -131,7 +131,8 @@ a:hover {
   box-shadow: 0 24px 40px rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(14px);
   z-index: 11;
-  width: min(420px, calc(100% - 3rem));
+  width: auto;
+  max-width: 100%;
 }
 
 .bottom-nav-item {
