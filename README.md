@@ -75,7 +75,5 @@ Você pode sobrescrever os valores criando um arquivo `.env` na raiz ou definind
 
 ## Próximos passos sugeridos
 
-- Implementar redimensionamento e otimização das imagens enviadas.
-- Persistir uploads em storage externo (S3, etc.) para ambientes de produção.
 - Criar testes automatizados para rotas críticas.
 - Adicionar notificações para novos follows e mensagens.

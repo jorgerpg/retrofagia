@@ -1,9 +1,12 @@
+import time
+from datetime import datetime, timezone
 from itertools import chain
 
 from flask import (
     Blueprint,
     abort,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -17,6 +20,32 @@ from .models import Album, Follow, Message, Review, ReviewComment, User
 from .storage import clone_image, delete_image, save_image
 
 main_bp = Blueprint("main", __name__, template_folder="templates")
+
+
+def _to_utc_iso(dt: datetime) -> str:
+    """Format datetimes as ISO strings with Z suffix."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.isoformat().replace("+00:00", "Z")
+
+
+def _parse_iso(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    value = value.strip()
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    else:
+        parsed = parsed.astimezone(timezone.utc)
+    return parsed
 
 
 @main_bp.route("/")
@@ -485,7 +514,186 @@ def chat():
         contacts=contacts,
         selected_user=selected_user,
         conversation=conversation,
+        page_class="chat-page",
     )
+
+
+def _collect_notifications(user: User, since: datetime | None):
+    follow_query = Follow.query.filter(Follow.following_id == user.id)
+    if since:
+        follow_query = follow_query.filter(Follow.created_at > since)
+    follow_records = follow_query.order_by(Follow.created_at.desc()).all()
+
+    follower_ids = {record.follower_id for record in follow_records}
+    followers_map = (
+        {
+            follower.id: follower
+            for follower in User.query.filter(User.id.in_(follower_ids)).all()
+        }
+        if follower_ids
+        else {}
+    )
+
+    followers_payload = [
+        {
+            "id": record.follower_id,
+            "username": followers_map[record.follower_id].username,
+            "avatar_url": followers_map[record.follower_id].avatar_url,
+            "created_at": _to_utc_iso(record.created_at),
+        }
+        for record in follow_records
+        if record.follower_id in followers_map
+    ]
+
+    message_query = Message.query.filter(Message.receiver_id == user.id)
+    if since:
+        message_query = message_query.filter(Message.created_at > since)
+    message_records = message_query.order_by(Message.created_at.desc()).all()
+
+    senders = {message.sender_id for message in message_records}
+    senders_map = (
+        {
+            sender.id: sender
+            for sender in User.query.filter(User.id.in_(senders)).all()
+        }
+        if senders
+        else {}
+    )
+
+    latest_per_sender: dict[int, dict[str, object]] = {}
+    for message in message_records:
+        sender = senders_map.get(message.sender_id)
+        if not sender:
+            continue
+        existing = latest_per_sender.get(sender.id)
+        if not existing or message.created_at > existing["created_at"]:
+            latest_per_sender[sender.id] = {
+                "created_at": message.created_at,
+                "from_user": {
+                    "id": sender.id,
+                    "username": sender.username,
+                    "avatar_url": sender.avatar_url,
+                },
+                "latest_message": message.content,
+            }
+
+    messages_payload = []
+    for _, entry in sorted(
+        (
+            (value["created_at"], value)
+            for value in latest_per_sender.values()
+        ),
+        key=lambda pair: pair[0],
+        reverse=True,
+    ):
+        messages_payload.append(
+            {
+                "from_user": entry["from_user"],
+                "latest_message": entry["latest_message"],
+                "created_at": _to_utc_iso(entry["created_at"]),
+            }
+        )
+
+    return followers_payload, messages_payload
+
+
+@main_bp.route("/api/notifications")
+@login_required
+def notifications_api():
+    since = _parse_iso(request.args.get("since"))
+    wait_for_updates = bool(request.args.get("wait", type=int))
+    timeout_param = request.args.get("timeout", type=int)
+    timeout_seconds = max(5, min(timeout_param if timeout_param else 30, 60))
+    deadline = time.monotonic() + timeout_seconds if wait_for_updates else None
+
+    while True:
+        followers_payload, messages_payload = _collect_notifications(
+            current_user, since
+        )
+        if (
+            not wait_for_updates
+            or followers_payload
+            or messages_payload
+            or (deadline is not None and time.monotonic() >= deadline)
+        ):
+            return jsonify(
+                {
+                    "server_time": _to_utc_iso(datetime.now(timezone.utc)),
+                    "new_followers": followers_payload,
+                    "new_messages": messages_payload,
+                }
+            )
+        time.sleep(1)
+        db.session.expire_all()
+
+
+def _load_chat_messages(
+    current_id: int, target_id: int, after_id: int | None
+) -> list[Message]:
+    conversation_query = Message.query.filter(
+        or_(
+            and_(
+                Message.sender_id == current_id,
+                Message.receiver_id == target_id,
+            ),
+            and_(
+                Message.sender_id == target_id,
+                Message.receiver_id == current_id,
+            ),
+        )
+    )
+    if after_id is not None:
+        conversation_query = conversation_query.filter(Message.id > after_id)
+
+    return conversation_query.order_by(Message.created_at.asc()).all()
+
+
+@main_bp.route("/api/chat/<int:user_id>/messages")
+@login_required
+def chat_messages_api(user_id: int):
+    target = User.query.get_or_404(user_id)
+    allowed_ids = {
+        user.id for user in chain(current_user.following, current_user.followers)
+    }
+    if target.id not in allowed_ids and target.id != current_user.id:
+        abort(403)
+
+    after_id = request.args.get("after", type=int)
+    wait_for_updates = bool(request.args.get("wait", type=int)) and (
+        after_id is not None
+    )
+    timeout_param = request.args.get("timeout", type=int)
+    timeout_seconds = max(5, min(timeout_param if timeout_param else 30, 60))
+    deadline = time.monotonic() + timeout_seconds if wait_for_updates else None
+
+    while True:
+        messages = _load_chat_messages(current_user.id, target.id, after_id)
+
+        if messages:
+            payload = [
+                {
+                    "id": message.id,
+                    "from_me": message.sender_id == current_user.id,
+                    "content": message.content,
+                    "created_at": _to_utc_iso(message.created_at),
+                }
+                for message in messages
+            ]
+            return jsonify(
+                {
+                    "messages": payload,
+                    "last_id": payload[-1]["id"],
+                }
+            )
+
+        if (
+            not wait_for_updates
+            or (deadline is not None and time.monotonic() >= deadline)
+        ):
+            return jsonify({"messages": [], "last_id": after_id or 0})
+
+        time.sleep(1)
+        db.session.expire_all()
 
 
 @main_bp.route("/search")

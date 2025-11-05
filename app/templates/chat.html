@@ -3,26 +3,39 @@
 {% block content %}
 <section class="chat-layout">
   <aside class="chat-sidebar">
-    <h2>Conversas</h2>
-    <ul>
-      {% for contact in contacts %}
-      <li class="{% if selected_user and selected_user.id == contact.id %}active{% endif %}">
-        <a href="{{ url_for('main.chat', with_user=contact.id) }}">
-          {% if contact.avatar_url %}
-          <img src="{{ contact.avatar_url | image_url }}" alt="Avatar de {{ contact.username }}" />
-          {% else %}
-          <div class="avatar-placeholder">{{ contact.username[0]|upper }}</div>
-          {% endif %}
-          <span>{{ contact.username }}</span>
-        </a>
-      </li>
-      {% else %}
-      <li class="muted">Sem contatos ainda. Siga pessoas para começar.</li>
-      {% endfor %}
-    </ul>
+    <div class="chat-sidebar-bar">
+      <h2>Conversas</h2>
+    </div>
+    <div class="chat-sidebar-scroll">
+      <ul>
+        {% for contact in contacts %}
+        <li class="{% if selected_user and selected_user.id == contact.id %}active{% endif %}">
+          <a href="{{ url_for('main.chat', with_user=contact.id) }}">
+            {% if contact.avatar_url %}
+            <img src="{{ contact.avatar_url | image_url }}" alt="Avatar de {{ contact.username }}" />
+            {% else %}
+            <div class="avatar-placeholder">{{ contact.username[0]|upper }}</div>
+            {% endif %}
+            <span>{{ contact.username }}</span>
+          </a>
+        </li>
+        {% else %}
+        <li class="muted">Sem contatos ainda. Siga pessoas para começar.</li>
+        {% endfor %}
+      </ul>
+    </div>
   </aside>
 
-  <div class="chat-thread">
+  <div
+    class="chat-thread"
+    data-chat-thread
+    {% if selected_user %}
+    data-selected-user-id="{{ selected_user.id }}"
+    {% if conversation %}
+    data-last-message-id="{{ (conversation|last).id }}"
+    {% endif %}
+    {% endif %}
+  >
     <div class="chat-mobile-contacts">
       <h2>Conversas</h2>
       <div class="contact-scroll">
@@ -44,9 +57,12 @@
     <header class="chat-header">
       <h2>{{ selected_user.username }}</h2>
     </header>
-    <div class="chat-messages">
+    <div class="chat-messages" data-chat-messages>
       {% for message in conversation %}
-      <div class="message {% if message.sender_id == current_user.id %}from-me{% else %}from-them{% endif %}">
+      <div
+        class="message {% if message.sender_id == current_user.id %}from-me{% else %}from-them{% endif %}"
+        data-message-id="{{ message.id }}"
+      >
         <p>{{ message.content }}</p>
         <span class="timestamp">{{ message.created_at.strftime('%d/%m %H:%M') }}</span>
       </div>

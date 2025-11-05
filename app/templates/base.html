@@ -5,8 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}retrofagia{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   </head>
-  <body>
+  <body
+    {% if page_class %}class="{{ page_class }}"{% endif %}
+    {% if current_user.is_authenticated %}
+    data-authenticated="true"
+    data-user-id="{{ current_user.id }}"
+    {% else %}
+    data-authenticated="false"
+    {% endif %}
+  >
     <header class="topbar">
       <div class="brand-row">
         <div class="brand">retrofagia</div>
@@ -47,6 +56,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z" fill="none"/>
         </svg>
+        <span class="notification-badge" data-notification="follow" aria-hidden="true"></span>
       </a>
       <a href="{{ url_for('main.albums') }}" class="bottom-nav-item">
         <span class="sr-only">Coleção</span>
@@ -60,6 +70,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 5h16v10H8l-4 4z" fill="none"/>
         </svg>
+        <span class="notification-badge" data-notification="message" aria-hidden="true"></span>
       </a>
       <a href="{{ url_for('main.edit_profile') }}" class="bottom-nav-item avatar">
         <span class="sr-only">Perfil</span>
