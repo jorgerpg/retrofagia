@@ -8,9 +8,30 @@
     <p class="muted">{{ review.album.artist }}</p>
   </div>
   <form method="post" class="form">
-    <label>Avaliação
-      <input type="number" name="rating" min="1" max="5" value="{{ review.rating }}" required />
-    </label>
+    {% set rating_label_id = "edit-rating-label-" ~ review.id %}
+    <div class="form-group">
+      <span id="{{ rating_label_id }}" class="form-group-label">Avaliação</span>
+      <div class="star-rating" role="radiogroup" aria-labelledby="{{ rating_label_id }}">
+        {% for value in [5, 4, 3, 2, 1] %}
+        {% set input_id = "edit-rating-" ~ review.id ~ "-" ~ value %}
+        <input
+          type="radio"
+          id="{{ input_id }}"
+          name="rating"
+          value="{{ value }}"
+          {% if value == review.rating %}checked{% endif %}
+          required
+        />
+        <label
+          for="{{ input_id }}"
+          aria-label="{{ value }} estrela{% if value > 1 %}s{% endif %}"
+          title="{{ value }} estrela{% if value > 1 %}s{% endif %}"
+        >
+          &#9733;
+        </label>
+        {% endfor %}
+      </div>
+    </div>
     <label>Comentário
       <textarea name="content" rows="4" required>{{ review.content }}</textarea>
     </label>

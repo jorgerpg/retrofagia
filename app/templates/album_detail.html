@@ -26,11 +26,32 @@
           <button type="submit">Adicionar à minha coleção</button>
         </form>
         {% elif not user_review %}
+        {% set rating_label_id = "album-rating-label-" ~ user_album.id %}
         <form method="post" action="{{ url_for('main.feed') }}" class="form album-review-form">
           <input type="hidden" name="album_id" value="{{ user_album.id }}" />
-          <label>Avaliação
-            <input type="number" name="rating" min="1" max="5" value="5" required />
-          </label>
+          <div class="form-group">
+            <span id="{{ rating_label_id }}" class="form-group-label">Avaliação</span>
+            <div class="star-rating" role="radiogroup" aria-labelledby="{{ rating_label_id }}">
+              {% for value in [5, 4, 3, 2, 1] %}
+              {% set input_id = "album-rating-" ~ user_album.id ~ "-" ~ value %}
+              <input
+                type="radio"
+                id="{{ input_id }}"
+                name="rating"
+                value="{{ value }}"
+                {% if value == 5 %}checked{% endif %}
+                required
+              />
+              <label
+                for="{{ input_id }}"
+                aria-label="{{ value }} estrela{% if value > 1 %}s{% endif %}"
+                title="{{ value }} estrela{% if value > 1 %}s{% endif %}"
+              >
+                &#9733;
+              </label>
+              {% endfor %}
+            </div>
+          </div>
           <label>Comentário
             <textarea name="content" rows="3" placeholder="Compartilhe sua opinião..." required></textarea>
           </label>
