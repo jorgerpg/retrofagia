@@ -102,6 +102,7 @@
     <footer class="review-footer">
       <span class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
       <div class="review-actions">
+        <a class="button ghost" href="{{ url_for('main.view_review', review_id=review.id) }}">Ver review</a>
         {% if review.user_id == current_user.id %}
         <a class="button ghost" href="{{ url_for('main.edit_review', review_id=review.id) }}">Editar</a>
         <form method="post" action="{{ url_for('main.delete_review', review_id=review.id) }}">
@@ -114,7 +115,9 @@
     <section class="comments">
       <h4>Comentários</h4>
       <div class="comments-list">
-        {% for comment in review.comments %}
+        {% set total_comments = review.comments|length %}
+        {% set recent_comments = review.comments[-5:] %}
+        {% for comment in recent_comments %}
         <div class="comment">
           <div class="comment-meta">
             <a href="{{ url_for('main.view_profile', username=comment.user.username) }}">{{ comment.user.username }}</a>
@@ -126,6 +129,11 @@
         <p class="muted">Seja o primeiro a comentar.</p>
         {% endfor %}
       </div>
+      {% if total_comments > 5 %}
+      <a class="comments-see-more" href="{{ url_for('main.view_review', review_id=review.id) }}">
+        Ver todos os {{ total_comments }} comentários
+      </a>
+      {% endif %}
       <form method="post" action="{{ url_for('main.add_comment', review_id=review.id) }}" class="form inline-comment">
         <textarea name="content" rows="2" placeholder="Escreva um comentário..." required></textarea>
         <button type="submit">Enviar</button>

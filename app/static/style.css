@@ -501,6 +501,22 @@ button.ghost.danger:hover,
   margin: 0;
 }
 
+.comments-see-more {
+  display: inline-flex;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: var(--accent);
+  margin-top: 0.5rem;
+}
+
+.review-detail-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
 .inline-comment {
   grid-template-columns: 1fr auto;
   align-items: end;
@@ -513,6 +529,12 @@ button.ghost.danger:hover,
 
 .inline-comment button {
   justify-self: end;
+}
+
+.review-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .review-card header {

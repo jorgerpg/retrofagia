@@ -14,6 +14,7 @@ from flask import (
 )
 from flask_login import current_user, login_required
 from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import joinedload
 
 from . import db
 from .models import Album, Follow, Message, Review, ReviewComment, User
@@ -426,6 +427,20 @@ def edit_review(review_id):
             return redirect(url_for("main.album_detail", album_id=review.album_id))
 
     return render_template("review_edit.html", review=review)
+
+
+@main_bp.route("/reviews/<int:review_id>")
+@login_required
+def view_review(review_id):
+    review = (
+        Review.query.options(
+            joinedload(Review.user),
+            joinedload(Review.album),
+            joinedload(Review.comments).joinedload(ReviewComment.user),
+        )
+        .get_or_404(review_id)
+    )
+    return render_template("review_view.html", review=review)
 
 
 @main_bp.route("/reviews/<int:review_id>/delete", methods=["POST"])
