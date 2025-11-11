@@ -443,6 +443,24 @@ def view_review(review_id):
     return render_template("review_view.html", review=review)
 
 
+@main_bp.route("/reviews/<int:review_id>/comments/<int:comment_id>/delete", methods=["POST"])
+@login_required
+def delete_comment(review_id, comment_id):
+    comment = (
+        ReviewComment.query.filter_by(id=comment_id, review_id=review_id)
+        .options(joinedload(ReviewComment.review))
+        .first_or_404()
+    )
+    review = comment.review
+    if comment.user_id != current_user.id and review.user_id != current_user.id:
+        abort(403)
+
+    db.session.delete(comment)
+    db.session.commit()
+    flash("Comentário removido.", "success")
+    return redirect(request.referrer or url_for("main.feed"))
+
+
 @main_bp.route("/reviews/<int:review_id>/delete", methods=["POST"])
 @login_required
 def delete_review(review_id):
@@ -454,6 +472,9 @@ def delete_review(review_id):
     db.session.delete(review)
     db.session.commit()
     flash("Review removida.", "success")
+    redirect_to = request.form.get("redirect_to")
+    if redirect_to == "albums":
+        return redirect(url_for("main.albums"))
     return redirect(request.referrer or url_for("main.album_detail", album_id=album_id))
 
 
