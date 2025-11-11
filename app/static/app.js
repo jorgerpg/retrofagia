@@ -4,6 +4,8 @@
     return;
   }
 
+  initFlashDismissal();
+
   const isAuthenticated = body.dataset.authenticated === "true";
   if (!isAuthenticated) {
     return;
@@ -163,6 +165,31 @@
       chatPage.dispose();
     }
   });
+
+  function initFlashDismissal() {
+    const flashContainer = document.querySelector(".flash-container");
+    if (!flashContainer) {
+      return;
+    }
+
+    const flashes = flashContainer.querySelectorAll(".flash");
+    if (!flashes.length) {
+      flashContainer.remove();
+      return;
+    }
+
+    flashes.forEach((flash) => {
+      window.setTimeout(() => {
+        flash.classList.add("flash-dismissed");
+        window.setTimeout(() => {
+          flash.remove();
+          if (!flashContainer.querySelector(".flash")) {
+            flashContainer.remove();
+          }
+        }, 220);
+      }, 1000);
+    });
+  }
 
   function setupChat() {
     const thread = document.querySelector(
