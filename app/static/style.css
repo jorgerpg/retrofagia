@@ -979,17 +979,23 @@ button.ghost.danger:hover,
 }
 
 .chat-form {
-  padding: 1.25rem;
+  padding: 0.75rem 1.25rem;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
 }
 
 .chat-form textarea {
-  min-height: 72px;
+  flex: 1;
+  min-height: 44px;
+  resize: none;
 }
 
 .chat-form button {
-  justify-self: end;
+  padding-inline: 1.5rem;
+  align-self: stretch;
 }
 
 .empty,
