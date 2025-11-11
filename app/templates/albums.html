@@ -20,6 +20,24 @@
       </form>
     </article>
 
+    <article class="card album-search-card">
+      <h2>Buscar álbuns já cadastrados</h2>
+      <p class="muted">Evite duplicar: digite título ou artista e adicione direto da comunidade.</p>
+      <div class="album-search">
+        <label>Busca rápida
+          <input
+            type="text"
+            placeholder="Ex.: Loveless, Radiohead, etc."
+            data-album-search-input
+            autocomplete="off"
+          />
+        </label>
+      </div>
+      <div class="album-search-results" data-album-search-results>
+        <p class="muted">Sem resultados ainda. Comece digitando acima.</p>
+      </div>
+    </article>
+
     <div class="album-grid">
       {% for album in albums %}
       <article class="card album-card">

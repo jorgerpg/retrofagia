@@ -17,6 +17,7 @@
   const messageBadge = document.querySelector('[data-notification="message"]');
   const messageNavItem = messageBadge ? messageBadge.closest(".bottom-nav-item") : null;
   const chatPage = setupChat();
+  setupAlbumSearch();
 
   let lastNotificationCheck = new Date().toISOString();
   let notificationController = null;
@@ -419,5 +420,145 @@
   function safeNumber(value) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function setupAlbumSearch() {
+    const input = document.querySelector("[data-album-search-input]");
+    const results = document.querySelector("[data-album-search-results]");
+    if (!input || !results) {
+      return;
+    }
+
+    let debounceHandle = null;
+    let controller = null;
+
+    function setMessage(message) {
+      results.innerHTML = `<p class="muted">${message}</p>`;
+    }
+
+    function clearPending() {
+      if (debounceHandle) {
+        clearTimeout(debounceHandle);
+        debounceHandle = null;
+      }
+      if (controller) {
+        controller.abort();
+        controller = null;
+      }
+    }
+
+    function handleInput() {
+      const value = input.value.trim();
+      if (!value) {
+        clearPending();
+        setMessage("Sem resultados ainda. Comece digitando acima.");
+        return;
+      }
+      if (value.length < 2) {
+        clearPending();
+        setMessage("Digite pelo menos 2 caracteres para buscar.");
+        return;
+      }
+      if (debounceHandle) {
+        clearTimeout(debounceHandle);
+      }
+      debounceHandle = window.setTimeout(() => {
+        debounceHandle = null;
+        fetchResults(value);
+      }, 250);
+    }
+
+    function fetchResults(term) {
+      clearPending();
+      setMessage("Buscando álbuns...");
+      const url = new URL("/api/albums/search", origin);
+      url.searchParams.set("q", term);
+      controller = new AbortController();
+      fetch(url.toString(), {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+        signal: controller.signal,
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Erro ao buscar álbuns");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          controller = null;
+          renderResults(Array.isArray(data.results) ? data.results : []);
+        })
+        .catch((error) => {
+          controller = null;
+          if (error.name === "AbortError") {
+            return;
+          }
+          setMessage("Não foi possível buscar agora. Tente novamente.");
+        });
+    }
+
+    function renderResults(list) {
+      if (!list.length) {
+        setMessage("Nenhum álbum encontrado para esta busca.");
+        return;
+      }
+      const fragment = document.createDocumentFragment();
+      list.forEach((item) => {
+        fragment.appendChild(renderResultCard(item));
+      });
+      results.innerHTML = "";
+      results.appendChild(fragment);
+    }
+
+    function renderResultCard(item) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "album-search-result";
+
+      const cover = document.createElement("div");
+      cover.className = "album-search-cover";
+      if (item.cover_url) {
+        const img = document.createElement("img");
+        img.src = item.cover_url;
+        img.alt = `Capa de ${item.title || "álbum"}`;
+        cover.appendChild(img);
+      } else if (item.title) {
+        cover.textContent = item.title[0].toUpperCase();
+      } else {
+        cover.textContent = "?";
+      }
+
+      const info = document.createElement("div");
+      info.className = "album-search-info";
+      const title = document.createElement("h3");
+      title.textContent = item.title || "Álbum sem nome";
+      const artist = document.createElement("p");
+      artist.className = "muted";
+      artist.textContent = item.artist || "Artista desconhecido";
+      info.append(title, artist);
+
+      const actions = document.createElement("div");
+      actions.className = "album-search-actions";
+      if (item.already_owned) {
+        const badge = document.createElement("span");
+        badge.className = "muted";
+        badge.textContent = "Já na sua coleção";
+        actions.appendChild(badge);
+      } else {
+        const form = document.createElement("form");
+        form.method = "post";
+        form.action = `/albums/${item.id}/clone`;
+        const button = document.createElement("button");
+        button.type = "submit";
+        button.textContent = "Adicionar";
+        form.appendChild(button);
+        actions.appendChild(form);
+      }
+
+      wrapper.append(cover, info, actions);
+      return wrapper;
+    }
+
+    input.addEventListener("input", handleInput);
   }
 })();

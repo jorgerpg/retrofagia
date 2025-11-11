@@ -49,6 +49,14 @@ def _parse_iso(value: str | None) -> datetime | None:
     return parsed
 
 
+def _image_url(value: str | None) -> str:
+    if not value:
+        return ""
+    if value.startswith("http://") or value.startswith("https://"):
+        return value
+    return url_for("static", filename=value)
+
+
 @main_bp.route("/")
 def index():
     if current_user.is_authenticated:
@@ -239,6 +247,55 @@ def albums():
         .all()
     )
     return render_template("albums.html", albums=user_albums)
+
+
+@main_bp.route("/api/albums/search")
+@login_required
+def album_search_api():
+    query = request.args.get("q", "").strip()
+    if len(query) < 2:
+        return jsonify(results=[])
+
+    like_query = f"%{query}%"
+    owned_pairs = {
+        (title.lower(), artist.lower())
+        for title, artist in db.session.query(Album.title, Album.artist)
+        .filter(Album.user_id == current_user.id)
+        .all()
+    }
+
+    matches = (
+        Album.query.filter(
+            or_(
+                Album.title.ilike(like_query),
+                Album.artist.ilike(like_query),
+            )
+        )
+        .order_by(Album.created_at.desc())
+        .limit(40)
+        .all()
+    )
+
+    seen = set()
+    results = []
+    for album in matches:
+        key = (album.title.lower(), album.artist.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        results.append(
+            {
+                "id": album.id,
+                "title": album.title,
+                "artist": album.artist,
+                "cover_url": _image_url(album.cover_url),
+                "already_owned": key in owned_pairs,
+            }
+        )
+        if len(results) >= 10:
+            break
+
+    return jsonify(results=results)
 
 
 @main_bp.route("/albums/<int:album_id>/delete", methods=["POST"])
