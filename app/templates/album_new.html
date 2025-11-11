@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Novo álbum · retrofagia{% endblock %}
+{% block content %}
+<section class="grid">
+  <div class="column main-feed">
+    <article class="card">
+      <h1>Cadastrar novo álbum</h1>
+      <p class="muted">
+        Preencha os dados e adicione um álbum que ainda não encontrou na busca da coleção.
+      </p>
+      <form method="post" class="form" enctype="multipart/form-data">
+        <label>Título
+          <input type="text" name="title" placeholder="Nome do álbum" required />
+        </label>
+        <label>Artista/Banda
+          <input type="text" name="artist" placeholder="Quem lançou o álbum?" required />
+        </label>
+        <label>Capa (opcional)
+          <input type="file" name="cover" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" />
+          <span class="input-hint muted">PNG, JPG, GIF ou WEBP até 4MB.</span>
+        </label>
+        <div class="album-new-actions">
+          <button type="submit">Adicionar à coleção</button>
+          <a class="button ghost" href="{{ url_for('main.albums') }}">Voltar para coleção</a>
+        </div>
+      </form>
+    </article>
+  </div>
+</section>
+{% endblock %}

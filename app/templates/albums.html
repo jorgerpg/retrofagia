@@ -3,26 +3,9 @@
 {% block content %}
 <section class="grid">
   <div class="column main-feed">
-    <article class="card">
-      <h1>Sua coleção</h1>
-      <form method="post" class="form inline-form" enctype="multipart/form-data">
-        <label>Título
-          <input type="text" name="title" placeholder="Nome do álbum" required />
-        </label>
-        <label>Artista
-          <input type="text" name="artist" placeholder="Artista ou banda" required />
-        </label>
-        <label>Capa
-          <input type="file" name="cover" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" />
-          <span class="input-hint muted">Opcional · PNG, JPG, GIF ou WEBP até 4MB.</span>
-        </label>
-        <button type="submit">Adicionar</button>
-      </form>
-    </article>
-
     <article class="card album-search-card">
-      <h2>Buscar álbuns já cadastrados</h2>
-      <p class="muted">Evite duplicar: digite título ou artista e adicione direto da comunidade.</p>
+      <h1>Sua coleção</h1>
+      <p class="muted">Busque na comunidade antes de cadastrar um álbum novo.</p>
       <div class="album-search">
         <label>Busca rápida
           <input
@@ -35,6 +18,10 @@
       </div>
       <div class="album-search-results" data-album-search-results>
         <p class="muted">Sem resultados ainda. Comece digitando acima.</p>
+      </div>
+      <div class="album-search-manual">
+        <p class="muted">Não encontrou o álbum? Complete os dados manualmente.</p>
+        <a class="button ghost" href="{{ url_for('main.create_album') }}">Cadastrar novo álbum</a>
       </div>
     </article>
 

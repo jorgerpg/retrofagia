@@ -213,9 +213,20 @@ def view_profile(username):
     return render_template("profile_view.html", user=user, reviews=reviews)
 
 
-@main_bp.route("/albums", methods=["GET", "POST"])
+@main_bp.route("/albums")
 @login_required
 def albums():
+    user_albums = (
+        Album.query.filter_by(user_id=current_user.id)
+        .order_by(Album.created_at.desc())
+        .all()
+    )
+    return render_template("albums.html", albums=user_albums)
+
+
+@main_bp.route("/albums/new", methods=["GET", "POST"])
+@login_required
+def create_album():
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         artist = request.form.get("artist", "").strip()
@@ -223,30 +234,28 @@ def albums():
 
         if not title or not artist:
             flash("Título e artista são obrigatórios.", "error")
-        else:
-            cover_path = ""
-            if cover_file and cover_file.filename:
-                try:
-                    cover_path = save_image(cover_file)
-                except ValueError as exc:
-                    flash(str(exc), "error")
-                    return redirect(url_for("main.albums"))
-            album = Album(
-                title=title,
-                artist=artist,
-                cover_url=cover_path,
-                owner=current_user,
-            )
-            db.session.add(album)
-            db.session.commit()
-            flash("Álbum adicionado à sua coleção.", "success")
+            return redirect(url_for("main.create_album"))
 
-    user_albums = (
-        Album.query.filter_by(user_id=current_user.id)
-        .order_by(Album.created_at.desc())
-        .all()
-    )
-    return render_template("albums.html", albums=user_albums)
+        cover_path = ""
+        if cover_file and cover_file.filename:
+            try:
+                cover_path = save_image(cover_file)
+            except ValueError as exc:
+                flash(str(exc), "error")
+                return redirect(url_for("main.create_album"))
+
+        album = Album(
+            title=title,
+            artist=artist,
+            cover_url=cover_path,
+            owner=current_user,
+        )
+        db.session.add(album)
+        db.session.commit()
+        flash("Álbum adicionado à sua coleção.", "success")
+        return redirect(url_for("main.albums"))
+
+    return render_template("album_new.html")
 
 
 @main_bp.route("/api/albums/search")
@@ -318,7 +327,7 @@ def clone_album(album_id):
 
     if source_album.user_id == current_user.id:
         flash("Este álbum já está na sua coleção.", "info")
-        return redirect(request.referrer or url_for("main.feed"))
+        return redirect(url_for("main.album_detail", album_id=source_album.id))
 
     existing = (
         Album.query.filter_by(user_id=current_user.id)
@@ -330,7 +339,7 @@ def clone_album(album_id):
     )
     if existing:
         flash("Este álbum já está na sua coleção.", "info")
-        return redirect(request.referrer or url_for("main.feed"))
+        return redirect(url_for("main.album_detail", album_id=existing.id))
 
     cover_path = source_album.cover_url
     if cover_path:
@@ -345,7 +354,7 @@ def clone_album(album_id):
     db.session.add(cloned)
     db.session.commit()
     flash("Álbum adicionado à sua coleção. Publique sua review no feed!", "success")
-    return redirect(url_for("main.feed"))
+    return redirect(url_for("main.album_detail", album_id=cloned.id))
 
 
 @main_bp.route("/albums/<int:album_id>")
