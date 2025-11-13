@@ -23,6 +23,7 @@ class User(UserMixin, db.Model):
     bio = db.Column(db.Text, default="", nullable=False)
     avatar_url = db.Column(db.String(512), default="", nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
 
     followers = db.relationship(
         "User",

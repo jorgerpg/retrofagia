@@ -493,7 +493,10 @@ def album_detail(album_id):
 @main_bp.route("/albums/<int:album_id>/cover", methods=["POST"])
 @login_required
 def update_album_cover(album_id):
-    album = Album.query.filter_by(id=album_id, user_id=current_user.id).first_or_404()
+    album_query = Album.query.filter_by(id=album_id)
+    if not current_user.is_admin:
+        album_query = album_query.filter_by(user_id=current_user.id)
+    album = album_query.first_or_404()
     file = request.files.get("cover")
 
     if not file or not file.filename:
@@ -538,7 +541,7 @@ def add_comment(review_id):
 @login_required
 def edit_review(review_id):
     review = Review.query.get_or_404(review_id)
-    if review.user_id != current_user.id:
+    if not current_user.is_admin and review.user_id != current_user.id:
         abort(403)
 
     if request.method == "POST":
@@ -589,7 +592,11 @@ def delete_comment(review_id, comment_id):
         .first_or_404()
     )
     review = comment.review
-    if comment.user_id != current_user.id and review.user_id != current_user.id:
+    if (
+        not current_user.is_admin
+        and comment.user_id != current_user.id
+        and review.user_id != current_user.id
+    ):
         abort(403)
 
     db.session.delete(comment)
