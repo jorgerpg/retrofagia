@@ -130,6 +130,7 @@ class ChatReadState(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), primary_key=True)
     contact_id = db.Column(db.Integer, db.ForeignKey("users.id"), primary_key=True)
     last_read_message_id = db.Column(db.Integer, default=0, nullable=False)
+    last_read_at = db.Column(db.DateTime, nullable=True)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )

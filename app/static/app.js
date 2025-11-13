@@ -14,7 +14,8 @@
   const origin = window.location.origin;
   const messageBadge = document.querySelector('[data-notification="message"]');
   const messageNavItem = messageBadge ? messageBadge.closest(".bottom-nav-item") : null;
-  const chatPage = setupChat();
+  const chatContacts = setupChatContacts();
+  const chatPage = setupChat(chatContacts);
   setupAlbumSearch();
 
   let lastNotificationCheck = null;
@@ -29,7 +30,7 @@
     }
 
     if (count > 0) {
-      badgeEl.textContent = count > 9 ? "9+" : String(count);
+      badgeEl.textContent = "";
       parentEl.classList.add("has-notification");
     } else {
       badgeEl.textContent = "";
@@ -97,6 +98,9 @@
           ? totalUnreadFromResponse
           : fallbackMessageCount;
         setBadge(messageBadge, messageNavItem, badgeCount);
+        if (chatContacts) {
+          chatContacts.updateFromNotifications(newMessages);
+        }
 
         if (
           chatPage &&
@@ -206,7 +210,7 @@
     });
   }
 
-  function setupChat() {
+  function setupChat(contactsSync) {
     const thread = document.querySelector(
       "[data-chat-thread][data-selected-user-id]",
     );
@@ -224,11 +228,16 @@
       return null;
     }
 
+    if (contactsSync && contactsSync.markAsRead) {
+      contactsSync.markAsRead(selectedUserId);
+    }
+
     let lastMessageId = safeNumber(thread.dataset.lastMessageId);
     let messageController = null;
     let messageRetryHandle = null;
     let forceImmediateAfterAbort = false;
     let pollingPaused = false;
+    let readReceiptController = null;
 
     function ensureScroll() {
       window.requestAnimationFrame(() => {
@@ -311,6 +320,32 @@
       }, 4000);
     }
 
+    function sendReadReceipt(lastMessage) {
+      if (!lastMessage || lastMessage.from_me) {
+        return;
+      }
+      if (!lastMessage.id || !lastMessage.created_at) {
+        return;
+      }
+      const url = `/api/chat/${selectedUserId}/read`;
+      if (readReceiptController) {
+        readReceiptController.abort();
+      }
+      readReceiptController = new AbortController();
+      fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "same-origin",
+        signal: readReceiptController.signal,
+        body: JSON.stringify({
+          last_message_id: lastMessage.id,
+          last_message_at: lastMessage.created_at,
+        }),
+      }).catch(() => {});
+    }
+
     function startLongPoll(waitForUpdates) {
       if (pollingPaused) {
         return;
@@ -323,6 +358,9 @@
       if (waitForUpdates) {
         url.searchParams.set("wait", "1");
         url.searchParams.set("timeout", "30");
+      }
+      if (!pollingPaused) {
+        url.searchParams.set("active", "1");
       }
 
       const controller = new AbortController();
@@ -341,8 +379,18 @@
         })
         .then((data) => {
           messageController = null;
-          if (Array.isArray(data.messages)) {
-            appendMessages(data.messages);
+          const batch = Array.isArray(data.messages) ? data.messages : [];
+          if (batch.length) {
+            appendMessages(batch);
+            const latestIncoming = [...batch]
+              .reverse()
+              .find((msg) => !msg.from_me);
+            if (!pollingPaused && latestIncoming) {
+              sendReadReceipt(latestIncoming);
+              if (contactsSync && contactsSync.markAsRead) {
+                contactsSync.markAsRead(selectedUserId);
+              }
+            }
           }
           if (typeof data.last_id === "number" && data.last_id > lastMessageId) {
             lastMessageId = data.last_id;
@@ -385,6 +433,10 @@
         messageController.abort();
         messageController = null;
       }
+      if (readReceiptController) {
+        readReceiptController.abort();
+        readReceiptController = null;
+      }
     }
 
     function resumePolling() {
@@ -414,6 +466,116 @@
         }
       },
       dispose,
+    };
+  }
+
+  function setupChatContacts() {
+    const list = document.querySelector("[data-chat-contact-list]");
+    if (!list) {
+      return null;
+    }
+
+    const storedUnread = new Map();
+    Array.from(list.querySelectorAll("[data-contact-id]")).forEach((item) => {
+      storedUnread.set(item.dataset.contactId, safeNumber(item.dataset.unread));
+    });
+
+    function updateBadge(item, count) {
+      const badge = item.querySelector("[data-contact-badge]") || item.querySelector(".chat-unread-badge");
+      const link = item.querySelector("[data-contact-link]");
+      if (!badge || !link) {
+        return;
+      }
+      const contactId = item.dataset.contactId;
+      if (!contactId) {
+        return;
+      }
+      if (count > 0) {
+        badge.textContent = count > 99 ? "99+" : String(count);
+        badge.removeAttribute("aria-hidden");
+        badge.setAttribute("aria-label", `${count} mensagens não lidas`);
+        item.classList.add("has-unread");
+        storedUnread.set(contactId, count);
+        item.dataset.unread = String(count);
+      } else {
+        badge.textContent = "";
+        badge.setAttribute("aria-hidden", "true");
+        badge.removeAttribute("aria-label");
+        item.classList.remove("has-unread");
+        storedUnread.set(contactId, 0);
+        item.dataset.unread = "0";
+      }
+    }
+
+    function activityValue(isoString) {
+      if (!isoString) {
+        return 0;
+      }
+      const parsed = Date.parse(isoString);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+
+    function compareActivity(tsA, tsB) {
+      const valueA = activityValue(tsA);
+      const valueB = activityValue(tsB);
+      if (valueA === valueB) {
+        return 0;
+      }
+      return valueA > valueB ? 1 : -1;
+    }
+
+    function placeByActivity() {
+      const items = Array.from(list.children);
+      items.sort((a, b) => {
+        const diff = activityValue(b.dataset.lastActivity) - activityValue(a.dataset.lastActivity);
+        if (diff !== 0) {
+          return diff;
+        }
+        return (a.dataset.contactId || "").localeCompare(b.dataset.contactId || "");
+      });
+      items.forEach((node) => list.appendChild(node));
+    }
+
+    function updateActivity(item, isoString) {
+      if (!isoString) {
+        return;
+      }
+      item.dataset.lastActivity = isoString;
+      placeByActivity();
+    }
+
+    function updateFromNotifications(entries) {
+      if (!Array.isArray(entries)) {
+        return;
+      }
+      entries.forEach((entry) => {
+        const userId = safeNumber(entry && entry.from_user && entry.from_user.id);
+        if (!userId) {
+          return;
+        }
+        const item = list.querySelector('[data-contact-id="' + userId + '"]');
+        if (!item) {
+          return;
+        }
+        const unread = safeNumber(entry.unread_count);
+        updateBadge(item, unread);
+        const activityStamp = entry.created_at || new Date().toISOString();
+        updateActivity(item, activityStamp);
+      });
+    }
+
+    return {
+      updateFromNotifications,
+      markAsRead: (contactId) => {
+        if (!contactId) {
+          return;
+        }
+        const item = list.querySelector('[data-contact-id="' + contactId + '"]');
+        if (!item) {
+          return;
+        }
+        updateBadge(item, 0);
+      },
     };
   }
 

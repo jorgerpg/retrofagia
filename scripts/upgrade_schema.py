@@ -25,6 +25,10 @@ STATEMENTS = (
     ALTER TABLE albums
     ADD COLUMN IF NOT EXISTS personal_cover_url VARCHAR(512) NOT NULL DEFAULT '';
     """,
+    """
+    ALTER TABLE chat_read_states
+    ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMP NULL;
+    """,
 )
 
 

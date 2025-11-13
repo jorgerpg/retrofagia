@@ -13,7 +13,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import joinedload, aliased
 
 from . import db
@@ -738,16 +738,58 @@ def chat():
                 .all()
             )
             if conversation:
-                last_incoming_id = max(
-                    (message.id for message in conversation if message.sender_id == selected_user.id),
-                    default=None,
-                )
-                _mark_messages_as_read(current_user.id, selected_user.id, last_incoming_id)
+                last_incoming = [
+                    (message.id, message.created_at)
+                    for message in conversation
+                    if message.sender_id == selected_user.id
+                ]
+                if last_incoming:
+                    last_incoming_id, last_incoming_at = max(
+                        last_incoming, key=lambda item: item[1]
+                    )
+                    _mark_messages_as_read(
+                        current_user.id,
+                        selected_user.id,
+                        last_incoming_id,
+                        last_incoming_at,
+                    )
 
     contacts_map = {}
     for user in chain(current_user.following, current_user.followers):
         contacts_map[user.id] = user
-    contacts = sorted(contacts_map.values(), key=lambda u: u.username.lower())
+    contact_ids = list(contacts_map.keys())
+
+    last_activity = {}
+    if contact_ids:
+        other_id = case(
+            (Message.sender_id == current_user.id, Message.receiver_id),
+            else_=Message.sender_id,
+        )
+        last_rows = (
+            db.session.query(other_id.label("contact_id"), func.max(Message.created_at))
+            .filter(
+                or_(
+                    Message.sender_id == current_user.id,
+                    Message.receiver_id == current_user.id,
+                ),
+                or_(
+                    Message.sender_id.in_(contact_ids),
+                    Message.receiver_id.in_(contact_ids),
+                ),
+            )
+            .group_by("contact_id")
+            .all()
+        )
+        last_activity = {row.contact_id: row[1] for row in last_rows}
+
+    contacts = sorted(
+        contacts_map.values(),
+        key=lambda u: (
+            last_activity.get(u.id) or datetime.min,
+            u.username.lower(),
+        ),
+        reverse=True,
+    )
 
     return render_template(
         "chat.html",
@@ -755,11 +797,17 @@ def chat():
         selected_user=selected_user,
         conversation=conversation,
         unread_counts=_get_unread_counts(current_user.id, {user.id for user in contacts}),
+        contact_last_activity=last_activity,
         page_class="chat-page",
     )
 
 
-def _mark_messages_as_read(user_id: int, contact_id: int, last_message_id: int | None) -> None:
+def _mark_messages_as_read(
+    user_id: int,
+    contact_id: int,
+    last_message_id: int | None,
+    last_message_at: datetime | None,
+) -> None:
     if not last_message_id:
         return
     state = ChatReadState.query.filter_by(user_id=user_id, contact_id=contact_id).first()
@@ -773,8 +821,16 @@ def _mark_messages_as_read(user_id: int, contact_id: int, last_message_id: int |
     if state.last_read_message_id is None:
         state.last_read_message_id = 0
     if last_message_id <= state.last_read_message_id:
+        if not state.last_read_at and last_message_at:
+            state.last_read_at = last_message_at
+            db.session.commit()
         return
     state.last_read_message_id = last_message_id
+    if last_message_at is None:
+        message = Message.query.get(last_message_id)
+        last_message_at = message.created_at if message else None
+    if last_message_at:
+        state.last_read_at = last_message_at
     db.session.commit()
 
 
@@ -782,6 +838,7 @@ def _get_unread_counts(user_id: int, sender_ids: set[int] | None = None) -> dict
     if sender_ids is not None and not sender_ids:
         return {}
     state_alias = aliased(ChatReadState)
+    epoch = datetime(1970, 1, 1)
     query = (
         db.session.query(
             Message.sender_id.label("sender_id"),
@@ -795,7 +852,12 @@ def _get_unread_counts(user_id: int, sender_ids: set[int] | None = None) -> dict
             ),
         )
         .filter(Message.receiver_id == user_id)
-        .filter(Message.id > func.coalesce(state_alias.last_read_message_id, 0))
+        .filter(
+            or_(
+                state_alias.last_read_at.is_(None),
+                Message.created_at > func.coalesce(state_alias.last_read_at, epoch),
+            )
+        )
     )
     if sender_ids is not None:
         query = query.filter(Message.sender_id.in_(sender_ids))
@@ -958,6 +1020,7 @@ def chat_messages_api(user_id: int):
         abort(403)
 
     after_id = request.args.get("after", type=int)
+    is_active = bool(request.args.get("active", type=int))
     wait_for_updates = bool(request.args.get("wait", type=int)) and (
         after_id is not None
     )
@@ -978,15 +1041,11 @@ def chat_messages_api(user_id: int):
                 }
                 for message in messages
             ]
-            last_incoming_id = max(
-                (
-                    message.id
-                    for message in messages
-                    if message.sender_id == target.id
-                ),
-                default=None,
-            )
-            _mark_messages_as_read(current_user.id, target.id, last_incoming_id)
+            last_incoming = [
+                (message.id, message.created_at)
+                for message in messages
+                if message.sender_id == target.id
+            ]
             return jsonify(
                 {
                     "messages": payload,
@@ -1002,6 +1061,49 @@ def chat_messages_api(user_id: int):
 
         time.sleep(1)
         db.session.expire_all()
+
+
+@main_bp.route("/api/chat/<int:user_id>/read", methods=["POST"])
+@login_required
+def chat_mark_read_api(user_id: int):
+    target = User.query.get_or_404(user_id)
+    allowed_ids = {
+        user.id for user in chain(current_user.following, current_user.followers)
+    }
+    if target.id not in allowed_ids and target.id != current_user.id:
+        abort(403)
+
+    data = request.get_json(silent=True) or {}
+    last_id = data.get("last_message_id")
+    last_at_raw = data.get("last_message_at")
+    last_at = _parse_iso(last_at_raw)
+
+    if not last_id:
+        latest = (
+            Message.query.filter(
+                or_(
+                    and_(
+                        Message.sender_id == current_user.id,
+                        Message.receiver_id == target.id,
+                    ),
+                    and_(
+                        Message.sender_id == target.id,
+                        Message.receiver_id == current_user.id,
+                    ),
+                )
+            )
+            .order_by(Message.id.desc())
+            .first()
+        )
+        if latest:
+            last_id = latest.id
+            last_at = latest.created_at
+
+    if not last_id:
+        return jsonify({"status": "noop"})
+
+    _mark_messages_as_read(current_user.id, target.id, last_id, last_at)
+    return jsonify({"status": "ok"})
 
 
 @main_bp.route("/search")

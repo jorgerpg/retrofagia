@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Chats · retrofagia{% endblock %}
 {% set unread_counts = unread_counts or {} %}
+{% set contact_last_activity = contact_last_activity or {} %}
 {% block content %}
 <section
   class="chat-layout {% if selected_user %}chat-layout-thread-only{% else %}chat-layout-contacts-only{% endif %}"
@@ -11,11 +12,17 @@
       <h2>Conversas</h2>
     </div>
     <div class="chat-sidebar-scroll">
-      <ul>
+      <ul data-chat-contact-list>
         {% for contact in contacts %}
-        <li>
+        {% set last_activity = contact_last_activity.get(contact.id) %}
+        <li
+          data-contact-id="{{ contact.id }}"
+          data-unread="{{ unread }}"
+          {% if last_activity %}data-last-activity="{{ last_activity.isoformat() }}"{% endif %}
+          {% if unread_counts.get(contact.id, 0) %}class="has-unread"{% endif %}
+        >
           {% set unread = unread_counts.get(contact.id, 0) %}
-          <a href="{{ url_for('main.chat', with_user=contact.id) }}">
+          <a href="{{ url_for('main.chat', with_user=contact.id) }}" data-contact-link>
             {% if contact.avatar_url %}
             <img src="{{ contact.avatar_url | image_url }}" alt="Avatar de {{ contact.username }}" />
             {% else %}
@@ -23,9 +30,11 @@
             {% endif %}
             <span class="chat-contact-name">{{ contact.username }}</span>
             {% if unread %}
-            <span class="chat-unread-badge" aria-label="{{ unread }} mensagens não lidas">
+            <span class="chat-unread-badge" data-contact-badge aria-label="{{ unread }} mensagens não lidas">
               {{ unread if unread < 100 else "99+" }}
             </span>
+            {% else %}
+            <span class="chat-unread-badge" data-contact-badge aria-hidden="true"></span>
             {% endif %}
           </a>
         </li>
