@@ -12,14 +12,13 @@
   }
 
   const origin = window.location.origin;
-  const followBadge = document.querySelector('[data-notification="follow"]');
-  const followNavItem = followBadge ? followBadge.closest(".bottom-nav-item") : null;
   const messageBadge = document.querySelector('[data-notification="message"]');
   const messageNavItem = messageBadge ? messageBadge.closest(".bottom-nav-item") : null;
   const chatPage = setupChat();
   setupAlbumSearch();
 
-  let lastNotificationCheck = new Date().toISOString();
+  let lastNotificationCheck = null;
+  let lastUnreadTotal = 0;
   let notificationController = null;
   let notificationsPaused = false;
   let notificationRetryHandle = null;
@@ -52,6 +51,9 @@
     if (lastNotificationCheck) {
       url.searchParams.set("since", lastNotificationCheck);
     }
+    if (Number.isFinite(lastUnreadTotal)) {
+      url.searchParams.set("unread_snapshot", String(lastUnreadTotal));
+    }
     if (waitForUpdates) {
       url.searchParams.set("wait", "1");
       url.searchParams.set("timeout", "30");
@@ -74,15 +76,27 @@
       .then((data) => {
         notificationController = null;
         lastNotificationCheck = data.server_time || new Date().toISOString();
-        const followerCount = Array.isArray(data.new_followers)
-          ? data.new_followers.length
-          : 0;
         const newMessages = Array.isArray(data.new_messages)
           ? data.new_messages
           : [];
+        const totalUnreadFromResponse = Number(data.total_unread_messages);
+        const hasTotalUnread =
+          Number.isFinite(totalUnreadFromResponse) && totalUnreadFromResponse >= 0;
+        if (hasTotalUnread) {
+          lastUnreadTotal = totalUnreadFromResponse;
+        }
 
-        setBadge(followBadge, followNavItem, followerCount);
-        setBadge(messageBadge, messageNavItem, newMessages.length);
+        const fallbackMessageCount = newMessages.reduce((sum, item) => {
+          const value = safeNumber(item && item.unread_count);
+          if (value > 0) {
+            return sum + value;
+          }
+          return sum + 1;
+        }, 0);
+        const badgeCount = hasTotalUnread
+          ? totalUnreadFromResponse
+          : fallbackMessageCount;
+        setBadge(messageBadge, messageNavItem, badgeCount);
 
         if (
           chatPage &&

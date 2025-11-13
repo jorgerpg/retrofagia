@@ -612,6 +612,17 @@ button.ghost.danger:hover,
   border-radius: 0.75rem;
 }
 
+.review-album h3 a,
+.album-inline h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.review-album h3 a:hover,
+.album-inline h3 a:hover {
+  color: var(--accent);
+}
+
 .review-content {
   line-height: 1.6;
 }
@@ -1002,6 +1013,7 @@ button.ghost.danger:hover,
   border-radius: 0.75rem;
   background: rgba(255, 255, 255, 0.02);
   transition: background 160ms ease;
+  min-height: 56px;
 }
 
 .chat-sidebar-scroll li a:hover,
@@ -1015,6 +1027,27 @@ button.ghost.danger:hover,
   height: 36px;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.chat-contact-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.chat-unread-badge {
+  margin-left: auto;
+  min-width: 28px;
+  padding: 0 0.5rem;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 1px rgba(5, 5, 5, 0.7);
 }
 
 .chat-thread {

@@ -122,6 +122,17 @@ class Message(db.Model):
     )
 
 
+class ChatReadState(db.Model):
+    __tablename__ = "chat_read_states"
+
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), primary_key=True)
+    contact_id = db.Column(db.Integer, db.ForeignKey("users.id"), primary_key=True)
+    last_read_message_id = db.Column(db.Integer, default=0, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+
 class ReviewComment(db.Model):
     __tablename__ = "review_comments"
 

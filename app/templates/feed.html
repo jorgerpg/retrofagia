@@ -73,7 +73,11 @@
         <img src="{{ review.album.cover_url | image_url }}" alt="Capa do álbum {{ review.album.title }}" />
         {% endif %}
         <div>
-          <h3>{{ review.album.title }}</h3>
+          <h3>
+            <a href="{{ url_for('main.album_detail', album_id=review.album.id) }}">
+              {{ review.album.title }}
+            </a>
+          </h3>
           <p class="muted">{{ review.album.artist }}</p>
         </div>
       </div>
@@ -81,7 +85,6 @@
       <footer class="review-footer">
         <span class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
         <div class="review-actions">
-          <a class="button ghost" href="{{ url_for('main.album_detail', album_id=review.album.id) }}">Ver álbum</a>
           <a class="button ghost" href="{{ url_for('main.view_review', review_id=review.id) }}">Ver review</a>
           {% if review.user_id == current_user.id %}
           <a class="button ghost" href="{{ url_for('main.edit_review', review_id=review.id) }}">Editar</a>

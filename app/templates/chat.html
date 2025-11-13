@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Chats · retrofagia{% endblock %}
+{% set unread_counts = unread_counts or {} %}
 {% block content %}
 <section
   class="chat-layout {% if selected_user %}chat-layout-thread-only{% else %}chat-layout-contacts-only{% endif %}"
@@ -13,13 +14,19 @@
       <ul>
         {% for contact in contacts %}
         <li>
+          {% set unread = unread_counts.get(contact.id, 0) %}
           <a href="{{ url_for('main.chat', with_user=contact.id) }}">
             {% if contact.avatar_url %}
             <img src="{{ contact.avatar_url | image_url }}" alt="Avatar de {{ contact.username }}" />
             {% else %}
             <div class="avatar-placeholder">{{ contact.username[0]|upper }}</div>
             {% endif %}
-            <span>{{ contact.username }}</span>
+            <span class="chat-contact-name">{{ contact.username }}</span>
+            {% if unread %}
+            <span class="chat-unread-badge" aria-label="{{ unread }} mensagens não lidas">
+              {{ unread if unread < 100 else "99+" }}
+            </span>
+            {% endif %}
           </a>
         </li>
         {% else %}

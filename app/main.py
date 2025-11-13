@@ -14,10 +14,18 @@ from flask import (
 )
 from flask_login import current_user, login_required
 from sqlalchemy import and_, func, or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, aliased
 
 from . import db
-from .models import Album, Follow, Message, Review, ReviewComment, User
+from .models import (
+    Album,
+    ChatReadState,
+    Follow,
+    Message,
+    Review,
+    ReviewComment,
+    User,
+)
 from .storage import clone_image, delete_image, save_image
 
 main_bp = Blueprint("main", __name__, template_folder="templates")
@@ -605,6 +613,12 @@ def chat():
                 .order_by(Message.created_at.asc())
                 .all()
             )
+            if conversation:
+                last_incoming_id = max(
+                    (message.id for message in conversation if message.sender_id == selected_user.id),
+                    default=None,
+                )
+                _mark_messages_as_read(current_user.id, selected_user.id, last_incoming_id)
 
     contacts_map = {}
     for user in chain(current_user.following, current_user.followers):
@@ -616,8 +630,53 @@ def chat():
         contacts=contacts,
         selected_user=selected_user,
         conversation=conversation,
+        unread_counts=_get_unread_counts(current_user.id, {user.id for user in contacts}),
         page_class="chat-page",
     )
+
+
+def _mark_messages_as_read(user_id: int, contact_id: int, last_message_id: int | None) -> None:
+    if not last_message_id:
+        return
+    state = ChatReadState.query.filter_by(user_id=user_id, contact_id=contact_id).first()
+    if not state:
+        state = ChatReadState(
+            user_id=user_id,
+            contact_id=contact_id,
+            last_read_message_id=0,
+        )
+        db.session.add(state)
+    if state.last_read_message_id is None:
+        state.last_read_message_id = 0
+    if last_message_id <= state.last_read_message_id:
+        return
+    state.last_read_message_id = last_message_id
+    db.session.commit()
+
+
+def _get_unread_counts(user_id: int, sender_ids: set[int] | None = None) -> dict[int, int]:
+    if sender_ids is not None and not sender_ids:
+        return {}
+    state_alias = aliased(ChatReadState)
+    query = (
+        db.session.query(
+            Message.sender_id.label("sender_id"),
+            func.count(Message.id).label("unread_count"),
+        )
+        .outerjoin(
+            state_alias,
+            and_(
+                state_alias.user_id == user_id,
+                state_alias.contact_id == Message.sender_id,
+            ),
+        )
+        .filter(Message.receiver_id == user_id)
+        .filter(Message.id > func.coalesce(state_alias.last_read_message_id, 0))
+    )
+    if sender_ids is not None:
+        query = query.filter(Message.sender_id.in_(sender_ids))
+    unread_rows = query.group_by(Message.sender_id).all()
+    return {row.sender_id: int(row.unread_count) for row in unread_rows}
 
 
 def _collect_notifications(user: User, since: datetime | None):
@@ -646,6 +705,9 @@ def _collect_notifications(user: User, since: datetime | None):
         for record in follow_records
         if record.follower_id in followers_map
     ]
+
+    unread_counts_all = _get_unread_counts(user.id)
+    total_unread = sum(unread_counts_all.values())
 
     message_query = Message.query.filter(Message.receiver_id == user.id)
     if since:
@@ -693,10 +755,11 @@ def _collect_notifications(user: User, since: datetime | None):
                 "from_user": entry["from_user"],
                 "latest_message": entry["latest_message"],
                 "created_at": _to_utc_iso(entry["created_at"]),
+                "unread_count": unread_counts_all.get(entry["from_user"]["id"], 0),
             }
         )
 
-    return followers_payload, messages_payload
+    return followers_payload, messages_payload, total_unread
 
 
 @main_bp.route("/api/notifications")
@@ -707,15 +770,24 @@ def notifications_api():
     timeout_param = request.args.get("timeout", type=int)
     timeout_seconds = max(5, min(timeout_param if timeout_param else 30, 60))
     deadline = time.monotonic() + timeout_seconds if wait_for_updates else None
+    known_unread = request.args.get("unread_snapshot", type=int)
 
     while True:
-        followers_payload, messages_payload = _collect_notifications(
+        (
+            followers_payload,
+            messages_payload,
+            total_unread_messages,
+        ) = _collect_notifications(
             current_user, since
+        )
+        unread_changed = (
+            known_unread is not None and known_unread != total_unread_messages
         )
         if (
             not wait_for_updates
             or followers_payload
             or messages_payload
+            or unread_changed
             or (deadline is not None and time.monotonic() >= deadline)
         ):
             return jsonify(
@@ -723,6 +795,7 @@ def notifications_api():
                     "server_time": _to_utc_iso(datetime.now(timezone.utc)),
                     "new_followers": followers_payload,
                     "new_messages": messages_payload,
+                    "total_unread_messages": total_unread_messages,
                 }
             )
         time.sleep(1)
@@ -781,6 +854,15 @@ def chat_messages_api(user_id: int):
                 }
                 for message in messages
             ]
+            last_incoming_id = max(
+                (
+                    message.id
+                    for message in messages
+                    if message.sender_id == target.id
+                ),
+                default=None,
+            )
+            _mark_messages_as_read(current_user.id, target.id, last_incoming_id)
             return jsonify(
                 {
                     "messages": payload,

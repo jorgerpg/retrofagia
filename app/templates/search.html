@@ -61,7 +61,11 @@
               <img src="{{ album.cover_url | image_url }}" alt="Capa de {{ album.title }}" />
               {% endif %}
               <div>
-                <h3>{{ album.title }}</h3>
+                <h3>
+                  <a href="{{ url_for('main.album_detail', album_id=album.id) }}">
+                    {{ album.title }}
+                  </a>
+                </h3>
                 <p class="muted">{{ album.artist }}</p>
                 <p class="muted">por {{ album.owner.username }}</p>
               </div>
@@ -69,7 +73,6 @@
           </div>
           {% set signature = (album.title|lower, album.artist|lower) %}
           <div class="result-actions">
-            <a class="button ghost" href="{{ url_for('main.album_detail', album_id=album.id) }}">Ver álbum</a>
             {% if signature in owned_signatures %}
             <span class="badge">Na sua coleção</span>
             {% else %}

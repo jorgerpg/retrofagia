@@ -4,7 +4,7 @@
 <section class="card review-card review-focus">
   <div class="review-detail-nav">
     <a class="button ghost" href="{{ url_for('main.feed') }}">← Voltar ao feed</a>
-    <a class="button ghost" href="{{ url_for('main.album_detail', album_id=review.album.id) }}">Ver álbum</a>
+    <a class="button ghost" href="{{ url_for('main.album_detail', album_id=review.album.id) }}">{{ review.album.title }}</a>
   </div>
   <header class="review-header">
     <div class="review-user">
@@ -27,23 +27,26 @@
     <img src="{{ review.album.cover_url | image_url }}" alt="Capa do álbum {{ review.album.title }}" />
     {% endif %}
     <div>
-      <h3>{{ review.album.title }}</h3>
+      <h3>
+        <a href="{{ url_for('main.album_detail', album_id=review.album.id) }}">
+          {{ review.album.title }}
+        </a>
+      </h3>
       <p class="muted">{{ review.album.artist }}</p>
     </div>
   </div>
   <p class="review-content">{{ review.content }}</p>
   <footer class="review-footer">
     <span class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+    {% if review.user_id == current_user.id %}
     <div class="review-actions">
-      <a class="button ghost" href="{{ url_for('main.album_detail', album_id=review.album.id) }}">Ver álbum</a>
-      {% if review.user_id == current_user.id %}
       <a class="button ghost" href="{{ url_for('main.edit_review', review_id=review.id) }}">Editar</a>
       <form method="post" action="{{ url_for('main.delete_review', review_id=review.id) }}">
         <input type="hidden" name="redirect_to" value="albums" />
         <button type="submit" class="ghost danger">Excluir</button>
       </form>
-      {% endif %}
     </div>
+    {% endif %}
   </footer>
 
   <section class="comments">
