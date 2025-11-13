@@ -21,9 +21,10 @@
     <div class="album-grid profile-full-collection">
       {% for album in albums %}
       <article class="card album-card">
+        {% set display_cover = album.personal_cover_url or album.cover_url %}
         <a class="album-link" href="{{ url_for('main.album_detail', album_id=album.id) }}">
-          {% if album.cover_url %}
-          <img src="{{ album.cover_url | image_url }}" alt="Capa de {{ album.title }}" />
+          {% if display_cover %}
+          <img src="{{ display_cover | image_url }}" alt="Capa de {{ album.title }}" />
           {% else %}
           <div class="album-cover-placeholder">{{ album.title[0]|upper }}</div>
           {% endif %}

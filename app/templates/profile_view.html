@@ -55,8 +55,9 @@
       <div class="profile-album-grid">
         {% for album in albums[:4] %}
         <a class="profile-album-card" href="{{ url_for('main.album_detail', album_id=album.id) }}">
-          {% if album.cover_url %}
-          <img src="{{ album.cover_url | image_url }}" alt="Capa de {{ album.title }}" />
+          {% set display_cover = album.personal_cover_url or album.cover_url %}
+          {% if display_cover %}
+          <img src="{{ display_cover | image_url }}" alt="Capa de {{ album.title }}" />
           {% else %}
           <div class="album-cover-placeholder">{{ album.title[0]|upper }}</div>
           {% endif %}

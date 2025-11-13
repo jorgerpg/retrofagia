@@ -2,6 +2,7 @@
 """Promote a user to admin by email."""
 
 from pathlib import Path
+import subprocess
 import sys
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -29,7 +30,19 @@ def promote(email: str) -> int:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 3 and sys.argv[1] == "--docker":
+        email = sys.argv[2]
+        try:
+            subprocess.run(
+                ["docker", "compose", "exec", "web", "python", "scripts/promote_to_admin.py", email],
+                check=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            sys.exit(exc.returncode)
+        sys.exit(0)
+
     if len(sys.argv) != 2:
         print("Uso: python scripts/promote_to_admin.py <email>")
+        print("Ou: python scripts/promote_to_admin.py --docker <email>")
         sys.exit(1)
     sys.exit(promote(sys.argv[1]))

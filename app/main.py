@@ -307,22 +307,40 @@ def create_album():
             flash("Título e artista são obrigatórios.", "error")
             return redirect(url_for("main.create_album"))
 
-        cover_path = ""
+        personal_cover_path = ""
         if cover_file and cover_file.filename:
             try:
-                cover_path = save_image(cover_file)
+                personal_cover_path = save_image(cover_file)
             except ValueError as exc:
                 flash(str(exc), "error")
                 return redirect(url_for("main.create_album"))
 
+        title_key = title.lower()
+        artist_key = artist.lower()
+        matching_albums = (
+            Album.query.filter(
+                func.lower(Album.title) == title_key,
+                func.lower(Album.artist) == artist_key,
+            ).all()
+        )
+        existing_global_cover = next((a.cover_url for a in matching_albums if a.cover_url), "")
+
         album = Album(
             title=title,
             artist=artist,
-            cover_url=cover_path,
+            cover_url=existing_global_cover,
+            personal_cover_url=personal_cover_path,
             owner=current_user,
         )
         db.session.add(album)
         db.session.commit()
+
+        if not existing_global_cover and personal_cover_path:
+            global_cover = clone_image(personal_cover_path) or personal_cover_path
+            for entry in matching_albums + [album]:
+                entry.cover_url = global_cover
+            db.session.commit()
+
         flash("Álbum adicionado à sua coleção.", "success")
         return redirect(url_for("main.albums"))
 
@@ -384,7 +402,7 @@ def delete_album(album_id):
     album = Album.query.filter_by(id=album_id, user_id=current_user.id).first()
     if not album:
         abort(404)
-    delete_image(album.cover_url)
+    delete_image(album.personal_cover_url)
     db.session.delete(album)
     db.session.commit()
     flash("Álbum removido.", "success")
@@ -412,14 +430,11 @@ def clone_album(album_id):
         flash("Este álbum já está na sua coleção.", "info")
         return redirect(url_for("main.album_detail", album_id=existing.id))
 
-    cover_path = source_album.cover_url
-    if cover_path:
-        cover_path = clone_image(cover_path)
-
     cloned = Album(
         title=source_album.title,
         artist=source_album.artist,
-        cover_url=cover_path,
+        cover_url=source_album.cover_url,
+        personal_cover_url="",
         owner=current_user,
     )
     db.session.add(cloned)
@@ -466,10 +481,8 @@ def album_detail(album_id):
     unique_reviewer_count = len({review.user_id for review in reviews})
 
     cover_url = None
-    if user_album and user_album.cover_url:
-        cover_url = user_album.cover_url
-    elif album.cover_url:
-        cover_url = album.cover_url
+    if canonical_album.cover_url:
+        cover_url = canonical_album.cover_url
     else:
         for candidate in matching_albums_sorted:
             if candidate.cover_url:
@@ -493,10 +506,7 @@ def album_detail(album_id):
 @main_bp.route("/albums/<int:album_id>/cover", methods=["POST"])
 @login_required
 def update_album_cover(album_id):
-    album_query = Album.query.filter_by(id=album_id)
-    if not current_user.is_admin:
-        album_query = album_query.filter_by(user_id=current_user.id)
-    album = album_query.first_or_404()
+    scope = request.form.get("scope", "personal")
     file = request.files.get("cover")
 
     if not file or not file.filename:
@@ -509,11 +519,55 @@ def update_album_cover(album_id):
         flash(str(exc), "error")
         return redirect(request.referrer or url_for("main.album_detail", album_id=album_id))
 
-    delete_image(album.cover_url)
-    album.cover_url = new_path
-    db.session.commit()
-    flash("Capa do álbum atualizada.", "success")
-    return redirect(request.referrer or url_for("main.album_detail", album_id=album_id))
+    if scope == "global":
+        album = Album.query.get_or_404(album_id)
+        if not current_user.is_admin:
+            delete_image(new_path)
+            abort(403)
+        normalized_title = album.title.strip().lower()
+        normalized_artist = album.artist.strip().lower()
+        matching_albums = (
+            Album.query.filter(
+                func.lower(Album.title) == normalized_title,
+                func.lower(Album.artist) == normalized_artist,
+            ).all()
+        )
+        for entry in matching_albums:
+            delete_image(entry.cover_url)
+            entry.cover_url = new_path
+        db.session.commit()
+        flash("Capa global atualizada para todos.", "success")
+        target_id = album_id
+    else:
+        album = Album.query.filter_by(id=album_id, user_id=current_user.id).first()
+        if not album:
+            delete_image(new_path)
+            abort(403)
+        delete_image(album.personal_cover_url)
+        album.personal_cover_url = new_path
+
+        normalized_title = album.title.strip().lower()
+        normalized_artist = album.artist.strip().lower()
+        matching_albums = (
+            Album.query.filter(
+                func.lower(Album.title) == normalized_title,
+                func.lower(Album.artist) == normalized_artist,
+            ).all()
+        )
+        canonical_album = (
+            sorted(matching_albums, key=lambda a: a.created_at)[0]
+            if matching_albums
+            else album
+        )
+        if not canonical_album.cover_url:
+            global_clone = clone_image(new_path) or new_path
+            for entry in matching_albums:
+                entry.cover_url = global_clone
+        db.session.commit()
+        flash("Capa da sua coleção atualizada.", "success")
+        target_id = album_id
+
+    return redirect(request.referrer or url_for("main.album_detail", album_id=target_id))
 
 
 @main_bp.route("/reviews/<int:review_id>/comments", methods=["POST"])

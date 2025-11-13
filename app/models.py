@@ -71,6 +71,7 @@ class Album(db.Model):
     title = db.Column(db.String(200), nullable=False)
     artist = db.Column(db.String(200), nullable=False)
     cover_url = db.Column(db.String(512), default="", nullable=False)
+    personal_cover_url = db.Column(db.String(512), default="", nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     owner = db.relationship("User", back_populates="albums")
