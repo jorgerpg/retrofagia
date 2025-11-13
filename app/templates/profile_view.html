@@ -17,15 +17,58 @@
           {% else %}
           <p class="muted">Sem bio por enquanto.</p>
           {% endif %}
-          <p class="muted">Desde {{ user.created_at.strftime('%d/%m/%Y') }}</p>
+          <p class="muted">
+            Desde {{ user.created_at.strftime('%d/%m/%Y') }}
+            · {{ follower_count }} seguidor{% if follower_count != 1 %}es{% endif %}
+            · {{ following_count }} seguindo
+          </p>
         </div>
       </div>
-      {% if current_user.id != user.id %}
+      {% if is_self %}
+      <a class="button ghost" href="{{ url_for('main.edit_profile') }}">Editar perfil</a>
+      {% elif current_user.id != user.id %}
       <form method="post" action="{{ url_for('main.follow_user', username=user.username) }}">
         <button type="submit">
           {% if current_user.is_following(user) %}Deixar de seguir{% else %}Seguir{% endif %}
         </button>
       </form>
+      {% endif %}
+    </article>
+
+    <article class="card profile-collection">
+      <div class="profile-section-heading">
+        <h2>Coleção</h2>
+        <div class="profile-collection-info">
+          <span class="muted">
+            {% if albums %}
+            {{ albums|length }} álbum{% if albums|length != 1 %}s{% endif %}
+            {% else %}
+            Nenhum álbum ainda
+            {% endif %}
+          </span>
+          {% if albums|length > 4 %}
+          <a class="button ghost small" href="{{ url_for('main.profile_collection', username=user.username) }}">Ver todos</a>
+          {% endif %}
+        </div>
+      </div>
+      {% if albums %}
+      <div class="profile-album-grid">
+        {% for album in albums[:4] %}
+        <a class="profile-album-card" href="{{ url_for('main.album_detail', album_id=album.id) }}">
+          {% if album.cover_url %}
+          <img src="{{ album.cover_url | image_url }}" alt="Capa de {{ album.title }}" />
+          {% else %}
+          <div class="album-cover-placeholder">{{ album.title[0]|upper }}</div>
+          {% endif %}
+        <div class="profile-album-info">
+          <h3>{{ album.title }}</h3>
+          <p class="muted">{{ album.artist }}</p>
+        </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted">Sem álbuns cadastrados por aqui.</p>
       {% endif %}
     </article>
 
@@ -35,7 +78,7 @@
         <div class="review-user">
           <span>{{ user.username }}</span>
         </div>
-        <span class="review-rating">
+        <span class="review-rating" aria-label="Avaliação: {{ review.rating }} de 5">
           {% for _ in range(review.rating) %}<span>&#9733;</span>{% endfor %}
           {% for _ in range(5 - review.rating) %}<span class="muted">&#9733;</span>{% endfor %}
         </span>
@@ -45,12 +88,21 @@
         <img src="{{ review.album.cover_url | image_url }}" alt="Capa do álbum {{ review.album.title }}" />
         {% endif %}
         <div>
-          <h3>{{ review.album.title }}</h3>
+          <h3>
+            <a href="{{ url_for('main.album_detail', album_id=review.album.id) }}">
+              {{ review.album.title }}
+            </a>
+          </h3>
           <p class="muted">{{ review.album.artist }}</p>
         </div>
       </div>
       <p class="review-content">{{ review.content }}</p>
-      <footer class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</footer>
+      <footer class="review-footer">
+        <span class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+        <div class="review-actions">
+          <a class="button ghost" href="{{ url_for('main.view_review', review_id=review.id) }}">Ver review</a>
+        </div>
+      </footer>
     </article>
     {% else %}
     <article class="card empty">

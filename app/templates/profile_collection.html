@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Coleção de {{ user.username }} · retrofagia{% endblock %}
+{% block content %}
+<section class="grid">
+  <div class="column main-feed">
+    <article class="card profile-header">
+      <div class="profile-cover">
+        {% if user.avatar_url %}
+        <img src="{{ user.avatar_url | image_url }}" alt="Avatar de {{ user.username }}" />
+        {% else %}
+        <div class="avatar-placeholder">{{ user.username[0]|upper }}</div>
+        {% endif %}
+        <div>
+          <h1>Coleção de {{ user.username }}</h1>
+          <p class="muted">{{ albums|length }} álbum{% if albums|length != 1 %}s{% endif %} cadastrados</p>
+        </div>
+      </div>
+      <a class="button ghost" href="{{ url_for('main.view_profile', username=user.username) }}">← Voltar</a>
+    </article>
+
+    <div class="album-grid profile-full-collection">
+      {% for album in albums %}
+      <article class="card album-card">
+        <a class="album-link" href="{{ url_for('main.album_detail', album_id=album.id) }}">
+          {% if album.cover_url %}
+          <img src="{{ album.cover_url | image_url }}" alt="Capa de {{ album.title }}" />
+          {% else %}
+          <div class="album-cover-placeholder">{{ album.title[0]|upper }}</div>
+          {% endif %}
+        </a>
+        <div class="album-meta">
+          <a href="{{ url_for('main.album_detail', album_id=album.id) }}">
+            <h2>{{ album.title }}</h2>
+          </a>
+          <p class="muted">{{ album.artist }}</p>
+        </div>
+        {% if is_self %}
+        <form method="post" action="{{ url_for('main.delete_album', album_id=album.id) }}">
+          <button type="submit" class="ghost">Remover</button>
+        </form>
+        {% endif %}
+      </article>
+      {% else %}
+      <article class="card empty">
+        <p>Sem álbuns cadastrados ainda.</p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

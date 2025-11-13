@@ -367,6 +367,12 @@ a:hover {
   transform: translateY(-1px);
 }
 
+.button.small,
+button.small {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+}
+
 .button.ghost,
 button.ghost {
   background: transparent;
@@ -945,6 +951,65 @@ button.ghost.danger:hover,
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid rgba(255, 255, 255, 0.08);
+}
+
+.profile-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.profile-section-heading h2 {
+  margin: 0;
+}
+
+.profile-collection-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.profile-album-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.profile-album-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.profile-album-card:hover,
+.profile-album-card:focus-visible {
+  background: rgba(92, 108, 255, 0.12);
+  border-color: rgba(92, 108, 255, 0.45);
+}
+
+.profile-album-card img,
+.profile-album-card .album-cover-placeholder {
+  width: 64px;
+  height: 64px;
+  border-radius: 0.75rem;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.profile-album-info h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.profile-album-info p {
+  margin: 0.2rem 0 0;
 }
 
 .chat-layout {

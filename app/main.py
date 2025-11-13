@@ -172,7 +172,7 @@ def follow_user(username):
     return redirect(request.referrer or url_for("main.feed"))
 
 
-@main_bp.route("/profile", methods=["GET", "POST"])
+@main_bp.route("/profile/edit", methods=["GET", "POST"])
 @login_required
 def edit_profile():
     if request.method == "POST":
@@ -208,17 +208,80 @@ def edit_profile():
     return render_template("profile_edit.html")
 
 
-@main_bp.route("/profile/<username>")
-@login_required
-def view_profile(username):
-    user = User.query.filter_by(username=username).first_or_404()
+def _profile_payload(user: User):
     reviews = (
         Review.query.filter_by(user_id=user.id)
         .join(Album)
         .order_by(Review.created_at.desc())
         .all()
     )
-    return render_template("profile_view.html", user=user, reviews=reviews)
+    user_albums = (
+        Album.query.filter_by(user_id=user.id)
+        .order_by(Album.created_at.desc())
+        .all()
+    )
+    follower_count = Follow.query.filter_by(following_id=user.id).count()
+    following_count = Follow.query.filter_by(follower_id=user.id).count()
+    return reviews, user_albums, follower_count, following_count
+
+
+@main_bp.route("/profile")
+@login_required
+def my_profile():
+    (
+        reviews,
+        user_albums,
+        follower_count,
+        following_count,
+    ) = _profile_payload(current_user)
+    return render_template(
+        "profile_view.html",
+        user=current_user,
+        reviews=reviews,
+        albums=user_albums,
+        follower_count=follower_count,
+        following_count=following_count,
+        is_self=True,
+    )
+
+
+@main_bp.route("/profile/<username>")
+@login_required
+def view_profile(username):
+    user = User.query.filter_by(username=username).first_or_404()
+    (
+        reviews,
+        user_albums,
+        follower_count,
+        following_count,
+    ) = _profile_payload(user)
+    return render_template(
+        "profile_view.html",
+        user=user,
+        reviews=reviews,
+        albums=user_albums,
+        follower_count=follower_count,
+        following_count=following_count,
+        is_self=current_user.id == user.id,
+    )
+
+
+@main_bp.route("/profile/<username>/collection")
+@login_required
+def profile_collection(username):
+    user = User.query.filter_by(username=username).first_or_404()
+    albums = (
+        Album.query.filter_by(user_id=user.id)
+        .order_by(Album.created_at.desc())
+        .all()
+    )
+    is_self = current_user.id == user.id
+    return render_template(
+        "profile_collection.html",
+        user=user,
+        albums=albums,
+        is_self=is_self,
+    )
 
 
 @main_bp.route("/albums")
