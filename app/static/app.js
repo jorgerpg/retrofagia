@@ -603,44 +603,111 @@
     if (!window.fetch) {
       return;
     }
-    document.addEventListener("submit", (event) => {
-      const form = event.target;
+
+    function shouldHandle(form) {
       if (!(form instanceof HTMLFormElement)) {
-        return;
+        return false;
       }
       if (!form.matches("[data-reaction-form]")) {
-        return;
+        return false;
       }
-      event.preventDefault();
+      if (form.dataset.skipAjax === "true") {
+        delete form.dataset.skipAjax;
+        return false;
+      }
+      return true;
+    }
+
+    function submitReaction(form) {
       if (form.dataset.submitting === "true") {
         return;
       }
       form.dataset.submitting = "true";
 
       const formData = new FormData(form);
-      fetch(form.action, {
+      const actionAttr = form.getAttribute("action") || form.action;
+      let target;
+      try {
+        target = new URL(actionAttr, window.location.origin);
+      } catch (error) {
+        console.error("URL inválida para reação:", error);
+        form.dataset.submitting = "";
+        form.dataset.skipAjax = "true";
+        form.submit();
+        return;
+      }
+      target.searchParams.set("format", "json");
+
+      fetch(target.toString(), {
         method: "POST",
         body: formData,
         credentials: "same-origin",
         headers: {
           Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
         },
       })
         .then((response) => {
-          if (!response.ok) {
-            throw new Error("Erro ao reagir");
+          const contentType = response.headers.get("Content-Type") || "";
+          if (!response.ok || !contentType.includes("application/json")) {
+            throw new Error(`Resposta inesperada (${response.status})`);
           }
           return response.json();
         })
         .then((payload) => {
-          form.dataset.submitting = "false";
+          delete form.dataset.submitting;
           applyReactionPayload(payload);
         })
-        .catch(() => {
-          form.dataset.submitting = "false";
-          form.submit();
+        .catch((error) => {
+          delete form.dataset.submitting;
+          console.error("Falha ao registrar reação:", error);
+          const message =
+            (error && error.message) ||
+            "Não foi possível registrar sua reação. Tente novamente.";
+          showTransientToast(message);
         });
+    }
+
+    document.addEventListener("submit", (event) => {
+      const form = event.target;
+      if (!shouldHandle(form)) {
+        return;
+      }
+      event.preventDefault();
+      submitReaction(form);
     });
+
+    document.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-reaction-button]");
+      if (!button) {
+        return;
+      }
+      const form = button.closest("form");
+      if (!form || !shouldHandle(form)) {
+        return;
+      }
+      event.preventDefault();
+      submitReaction(form);
+    });
+  }
+
+  function showTransientToast(message) {
+    if (!message) {
+      return;
+    }
+    let container = document.querySelector("[data-reaction-toast]");
+    if (!container) {
+      container = document.createElement("div");
+      container.dataset.reactionToast = "true";
+      container.className = "reaction-toast";
+      document.body.appendChild(container);
+    }
+    container.textContent = message;
+    container.classList.add("visible");
+    window.clearTimeout(container._hideHandle);
+    container._hideHandle = window.setTimeout(() => {
+      container.classList.remove("visible");
+    }, 2500);
   }
 
   function applyReactionPayload(payload) {

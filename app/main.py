@@ -127,6 +127,19 @@ def _comment_reaction_maps(comment_ids: list[int]) -> tuple[dict[int, dict[str, 
     return counts, user_reactions
 
 
+def _wants_json_response() -> bool:
+    if request.args.get("format") == "json":
+        return True
+    requested_with = request.headers.get("X-Requested-With", "")
+    if requested_with and requested_with.lower() == "xmlhttprequest":
+        return True
+    accepts = request.accept_mimetypes
+    best = accepts.best or ""
+    if best == "application/json":
+        return True
+    return accepts["application/json"] >= accepts["text/html"]
+
+
 @main_bp.route("/")
 def index():
     if current_user.is_authenticated:
@@ -793,11 +806,7 @@ def react_review(review_id):
             db.session.add(reaction)
 
     db.session.commit()
-    wants_json = (
-        request.accept_mimetypes["application/json"]
-        >= request.accept_mimetypes["text/html"]
-    )
-    if wants_json:
+    if _wants_json_response():
         counts, user_map = _review_reaction_maps([review.id])
         payload = {
             "target_type": "review",
@@ -843,11 +852,7 @@ def react_comment(review_id, comment_id):
             db.session.add(reaction)
 
     db.session.commit()
-    wants_json = (
-        request.accept_mimetypes["application/json"]
-        >= request.accept_mimetypes["text/html"]
-    )
-    if wants_json:
+    if _wants_json_response():
         counts, user_map = _comment_reaction_maps([comment.id])
         payload = {
             "target_type": "comment",

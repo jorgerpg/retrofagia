@@ -546,6 +546,29 @@ button.ghost.danger:hover,
   font-size: 0.75rem;
 }
 
+.reaction-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translate(-50%, 125%);
+  padding: 0.75rem 1.25rem;
+  border-radius: 999px;
+  background: rgba(5, 5, 5, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  font-size: 0.9rem;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  transition: transform 200ms ease, opacity 200ms ease;
+  opacity: 0;
+  z-index: 20;
+}
+
+.reaction-toast.visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
 .comment-actions {
   display: flex;
   align-items: center;
