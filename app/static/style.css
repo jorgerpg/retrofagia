@@ -11,7 +11,7 @@
   --success: #58ffb0;
   --border: #1f1f1f;
   --topbar-height: 88px;
-  --bottom-nav-height: 96px;
+  --bottom-nav-height: 0px;
   font-size: 16px;
 }
 
@@ -71,8 +71,8 @@ a:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
   padding: 1.25rem 2rem;
   background: rgba(5, 5, 5, 0.9);
   border-bottom: 1px solid var(--border);
@@ -86,15 +86,67 @@ a:hover {
   font-weight: 600;
   letter-spacing: 0.2rem;
   text-transform: uppercase;
+  flex: 0 0 auto;
 }
 
-.brand-row {
+.topbar-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.75rem;
-  flex: 1 1 220px;
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
   min-width: 0;
-  justify-content: space-between;
+}
+
+.top-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
+}
+
+.top-nav::-webkit-scrollbar {
+  height: 0;
+}
+
+.top-nav-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.top-nav-item:hover,
+.top-nav-item:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.top-nav-item svg,
+.top-nav-item img {
+  width: 20px;
+  height: 20px;
+}
+
+.top-nav-item svg {
+  stroke: currentColor;
+  fill: none;
+}
+
+.top-nav-item img {
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .search-button,
@@ -1520,5 +1572,25 @@ button.ghost.danger:hover,
     width: 100%;
     max-width: 160px;
     justify-self: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar-actions {
+    gap: 0.5rem;
+  }
+
+  .brand {
+    display: none;
+  }
+
+  .topbar {
+    justify-content: flex-end;
+  }
+}
+
+@media (min-width: 721px) {
+  .brand {
+    display: inline-flex;
   }
 }
