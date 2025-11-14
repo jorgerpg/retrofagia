@@ -24,6 +24,8 @@ from .models import (
     Message,
     Review,
     ReviewComment,
+    ReviewReaction,
+    CommentReaction,
     User,
 )
 from .storage import clone_image, delete_image, save_image
@@ -63,6 +65,66 @@ def _image_url(value: str | None) -> str:
     if value.startswith("http://") or value.startswith("https://"):
         return value
     return url_for("static", filename=value)
+
+
+def _review_reaction_maps(review_ids: list[int]) -> tuple[dict[int, dict[str, int]], dict[int, int]]:
+    counts = {review_id: {"likes": 0, "dislikes": 0} for review_id in review_ids}
+    if not review_ids:
+        return counts, {}
+
+    aggregates = (
+        db.session.query(
+            ReviewReaction.review_id,
+            func.sum(case((ReviewReaction.value == 1, 1), else_=0)).label("likes"),
+            func.sum(case((ReviewReaction.value == -1, 1), else_=0)).label("dislikes"),
+        )
+        .filter(ReviewReaction.review_id.in_(review_ids))
+        .group_by(ReviewReaction.review_id)
+        .all()
+    )
+    for row in aggregates:
+        counts[row.review_id] = {
+            "likes": int(row.likes or 0),
+            "dislikes": int(row.dislikes or 0),
+        }
+
+    user_reactions = {
+        row.review_id: row.value
+        for row in ReviewReaction.query.filter_by(user_id=current_user.id)
+        .filter(ReviewReaction.review_id.in_(review_ids))
+        .all()
+    }
+    return counts, user_reactions
+
+
+def _comment_reaction_maps(comment_ids: list[int]) -> tuple[dict[int, dict[str, int]], dict[int, int]]:
+    counts = {comment_id: {"likes": 0, "dislikes": 0} for comment_id in comment_ids}
+    if not comment_ids:
+        return counts, {}
+
+    aggregates = (
+        db.session.query(
+            CommentReaction.comment_id,
+            func.sum(case((CommentReaction.value == 1, 1), else_=0)).label("likes"),
+            func.sum(case((CommentReaction.value == -1, 1), else_=0)).label("dislikes"),
+        )
+        .filter(CommentReaction.comment_id.in_(comment_ids))
+        .group_by(CommentReaction.comment_id)
+        .all()
+    )
+    for row in aggregates:
+        counts[row.comment_id] = {
+            "likes": int(row.likes or 0),
+            "dislikes": int(row.dislikes or 0),
+        }
+
+    user_reactions = {
+        row.comment_id: row.value
+        for row in CommentReaction.query.filter_by(user_id=current_user.id)
+        .filter(CommentReaction.comment_id.in_(comment_ids))
+        .all()
+    }
+    return counts, user_reactions
 
 
 @main_bp.route("/")
@@ -126,12 +188,22 @@ def feed():
     relevant_ids = list(set(chain(followed_ids, [current_user.id])))
 
     feed_reviews = (
-        Review.query.join(User, Review.user_id == User.id)
+        Review.query.options(
+            joinedload(Review.user),
+            joinedload(Review.album),
+            joinedload(Review.comments).joinedload(ReviewComment.user),
+        )
+        .join(User, Review.user_id == User.id)
         .join(Album, Review.album_id == Album.id)
         .filter(Review.user_id.in_(relevant_ids))
         .order_by(Review.created_at.desc())
         .all()
     )
+
+    review_ids = [review.id for review in feed_reviews]
+    comment_ids = [comment.id for review in feed_reviews for comment in review.comments]
+    review_reaction_counts, review_user_reactions = _review_reaction_maps(review_ids)
+    comment_reaction_counts, comment_user_reactions = _comment_reaction_maps(comment_ids)
 
     suggested_users = (
         User.query.filter(User.id != current_user.id)
@@ -146,6 +218,10 @@ def feed():
         reviews=feed_reviews,
         albums=current_user.albums,
         suggested_users=suggested_users,
+        review_reaction_counts=review_reaction_counts,
+        review_user_reactions=review_user_reactions,
+        comment_reaction_counts=comment_reaction_counts,
+        comment_user_reactions=comment_user_reactions,
     )
 
 
@@ -210,8 +286,8 @@ def edit_profile():
 
 def _profile_payload(user: User):
     reviews = (
-        Review.query.filter_by(user_id=user.id)
-        .join(Album)
+        Review.query.options(joinedload(Review.album))
+        .filter_by(user_id=user.id)
         .order_by(Review.created_at.desc())
         .all()
     )
@@ -234,6 +310,8 @@ def my_profile():
         follower_count,
         following_count,
     ) = _profile_payload(current_user)
+    review_ids = [review.id for review in reviews]
+    review_reaction_counts, review_user_reactions = _review_reaction_maps(review_ids)
     return render_template(
         "profile_view.html",
         user=current_user,
@@ -242,6 +320,8 @@ def my_profile():
         follower_count=follower_count,
         following_count=following_count,
         is_self=True,
+        review_reaction_counts=review_reaction_counts,
+        review_user_reactions=review_user_reactions,
     )
 
 
@@ -255,6 +335,8 @@ def view_profile(username):
         follower_count,
         following_count,
     ) = _profile_payload(user)
+    review_ids = [review.id for review in reviews]
+    review_reaction_counts, review_user_reactions = _review_reaction_maps(review_ids)
     return render_template(
         "profile_view.html",
         user=user,
@@ -263,6 +345,8 @@ def view_profile(username):
         follower_count=follower_count,
         following_count=following_count,
         is_self=current_user.id == user.id,
+        review_reaction_counts=review_reaction_counts,
+        review_user_reactions=review_user_reactions,
     )
 
 
@@ -462,10 +546,19 @@ def album_detail(album_id):
     canonical_album = matching_albums_sorted[0] if matching_albums_sorted else album
 
     reviews = (
-        Review.query.filter(Review.album_id.in_(album_ids))
+        Review.query.options(
+            joinedload(Review.user),
+            joinedload(Review.comments).joinedload(ReviewComment.user),
+        )
+        .filter(Review.album_id.in_(album_ids))
         .order_by(Review.created_at.desc())
         .all()
     )
+
+    review_ids = [review.id for review in reviews]
+    comment_ids = [comment.id for review in reviews for comment in review.comments]
+    review_reaction_counts, review_user_reactions = _review_reaction_maps(review_ids)
+    comment_reaction_counts, comment_user_reactions = _comment_reaction_maps(comment_ids)
 
     avg_rating = (
         db.session.query(func.avg(Review.rating))
@@ -500,6 +593,10 @@ def album_detail(album_id):
         user_review=user_review,
         unique_reviewer_count=unique_reviewer_count,
         canonical_album_id=canonical_album.id,
+        review_reaction_counts=review_reaction_counts,
+        review_user_reactions=review_user_reactions,
+        comment_reaction_counts=comment_reaction_counts,
+        comment_user_reactions=comment_user_reactions,
     )
 
 
@@ -634,7 +731,17 @@ def view_review(review_id):
         )
         .get_or_404(review_id)
     )
-    return render_template("review_view.html", review=review)
+    review_reaction_counts, review_user_reactions = _review_reaction_maps([review.id])
+    comment_ids = [comment.id for comment in review.comments]
+    comment_reaction_counts, comment_user_reactions = _comment_reaction_maps(comment_ids)
+    return render_template(
+        "review_view.html",
+        review=review,
+        review_reaction_counts=review_reaction_counts,
+        review_user_reactions=review_user_reactions,
+        comment_reaction_counts=comment_reaction_counts,
+        comment_user_reactions=comment_user_reactions,
+    )
 
 
 @main_bp.route("/reviews/<int:review_id>/comments/<int:comment_id>/delete", methods=["POST"])
@@ -656,6 +763,100 @@ def delete_comment(review_id, comment_id):
     db.session.delete(comment)
     db.session.commit()
     flash("Comentário removido.", "success")
+    return redirect(request.referrer or url_for("main.feed"))
+
+
+@main_bp.route("/reviews/<int:review_id>/react", methods=["POST"])
+@login_required
+def react_review(review_id):
+    review = Review.query.get_or_404(review_id)
+    action = request.form.get("action")
+    if action not in {"like", "dislike"}:
+        abort(400)
+
+    value = 1 if action == "like" else -1
+    reaction = ReviewReaction.query.filter_by(
+        review_id=review.id, user_id=current_user.id
+    ).first()
+
+    if reaction and reaction.value == value:
+        db.session.delete(reaction)
+    else:
+        if reaction:
+            reaction.value = value
+        else:
+            reaction = ReviewReaction(
+                review_id=review.id,
+                user_id=current_user.id,
+                value=value,
+            )
+            db.session.add(reaction)
+
+    db.session.commit()
+    wants_json = (
+        request.accept_mimetypes["application/json"]
+        >= request.accept_mimetypes["text/html"]
+    )
+    if wants_json:
+        counts, user_map = _review_reaction_maps([review.id])
+        payload = {
+            "target_type": "review",
+            "target_id": review.id,
+            "likes": counts.get(review.id, {}).get("likes", 0),
+            "dislikes": counts.get(review.id, {}).get("dislikes", 0),
+            "user_reaction": user_map.get(review.id),
+        }
+        return jsonify(payload)
+    return redirect(request.referrer or url_for("main.feed"))
+
+
+@main_bp.route(
+    "/reviews/<int:review_id>/comments/<int:comment_id>/react", methods=["POST"]
+)
+@login_required
+def react_comment(review_id, comment_id):
+    comment = (
+        ReviewComment.query.filter_by(id=comment_id, review_id=review_id)
+        .options(joinedload(ReviewComment.review))
+        .first_or_404()
+    )
+    action = request.form.get("action")
+    if action not in {"like", "dislike"}:
+        abort(400)
+
+    value = 1 if action == "like" else -1
+    reaction = CommentReaction.query.filter_by(
+        comment_id=comment.id, user_id=current_user.id
+    ).first()
+
+    if reaction and reaction.value == value:
+        db.session.delete(reaction)
+    else:
+        if reaction:
+            reaction.value = value
+        else:
+            reaction = CommentReaction(
+                comment_id=comment.id,
+                user_id=current_user.id,
+                value=value,
+            )
+            db.session.add(reaction)
+
+    db.session.commit()
+    wants_json = (
+        request.accept_mimetypes["application/json"]
+        >= request.accept_mimetypes["text/html"]
+    )
+    if wants_json:
+        counts, user_map = _comment_reaction_maps([comment.id])
+        payload = {
+            "target_type": "comment",
+            "target_id": comment.id,
+            "likes": counts.get(comment.id, {}).get("likes", 0),
+            "dislikes": counts.get(comment.id, {}).get("dislikes", 0),
+            "user_reaction": user_map.get(comment.id),
+        }
+        return jsonify(payload)
     return redirect(request.referrer or url_for("main.feed"))
 
 

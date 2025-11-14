@@ -98,8 +98,68 @@
         </div>
       </div>
       <p class="review-content">{{ review.content }}</p>
+      {% set review_counts = review_reaction_counts.get(review.id, {'likes': 0, 'dislikes': 0}) %}
+      {% set user_review_reaction = review_user_reactions.get(review.id) %}
       <footer class="review-footer">
-        <span class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+        <div class="review-footer-left">
+          <div class="reaction-group" aria-label="Reações da review">
+            <form
+              method="post"
+              action="{{ url_for('main.react_review', review_id=review.id) }}"
+              data-reaction-form
+            >
+              <input type="hidden" name="action" value="like" />
+              <button
+                type="submit"
+                class="reaction-button {% if user_review_reaction == 1 %}active{% endif %}"
+                aria-label="Curtir review"
+                data-reaction-button
+                data-target-type="review"
+                data-target-id="{{ review.id }}"
+                data-action="like"
+              >
+                <span class="reaction-icon like" aria-hidden="true"></span>
+                <span
+                  class="count"
+                  data-reaction-count
+                  data-target-type="review"
+                  data-target-id="{{ review.id }}"
+                  data-kind="likes"
+                >
+                  {{ review_counts['likes'] }}
+                </span>
+              </button>
+            </form>
+            <form
+              method="post"
+              action="{{ url_for('main.react_review', review_id=review.id) }}"
+              data-reaction-form
+            >
+              <input type="hidden" name="action" value="dislike" />
+              <button
+                type="submit"
+                class="reaction-button dislike {% if user_review_reaction == -1 %}active{% endif %}"
+                aria-label="Descurtir review"
+                data-reaction-button
+                data-target-type="review"
+                data-target-id="{{ review.id }}"
+                data-action="dislike"
+              >
+                <span class="reaction-icon dislike" aria-hidden="true"></span>
+                <span
+                  class="count"
+                  data-reaction-count
+                  data-target-type="review"
+                  data-target-id="{{ review.id }}"
+                  data-kind="dislikes"
+                >
+                  {{ review_counts['dislikes'] }}
+                </span>
+              </button>
+            </form>
+          </div>
+          <span class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+        </div>
         <div class="review-actions">
           <a class="button ghost" href="{{ url_for('main.view_review', review_id=review.id) }}">Ver review</a>
           {% if review.user_id == current_user.id %}

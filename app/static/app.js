@@ -17,6 +17,7 @@
   const chatContacts = setupChatContacts();
   const chatPage = setupChat(chatContacts);
   setupAlbumSearch();
+  setupReactionForms();
 
   let lastNotificationCheck = null;
   let lastUnreadTotal = 0;
@@ -596,6 +597,88 @@
   function safeNumber(value) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function setupReactionForms() {
+    if (!window.fetch) {
+      return;
+    }
+    document.addEventListener("submit", (event) => {
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement)) {
+        return;
+      }
+      if (!form.matches("[data-reaction-form]")) {
+        return;
+      }
+      event.preventDefault();
+      if (form.dataset.submitting === "true") {
+        return;
+      }
+      form.dataset.submitting = "true";
+
+      const formData = new FormData(form);
+      fetch(form.action, {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+        },
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Erro ao reagir");
+          }
+          return response.json();
+        })
+        .then((payload) => {
+          form.dataset.submitting = "false";
+          applyReactionPayload(payload);
+        })
+        .catch(() => {
+          form.dataset.submitting = "false";
+          form.submit();
+        });
+    });
+  }
+
+  function applyReactionPayload(payload) {
+    if (!payload || !payload.target_type) {
+      return;
+    }
+    const targetType = payload.target_type;
+    const targetId = String(payload.target_id ?? "");
+    if (!targetType || !targetId) {
+      return;
+    }
+    const likes = safeNumber(payload.likes);
+    const dislikes = safeNumber(payload.dislikes);
+    const userReaction =
+      payload.user_reaction === 1
+        ? 1
+        : payload.user_reaction === -1
+          ? -1
+          : 0;
+
+    const likesSelector = `[data-reaction-count][data-target-type="${targetType}"][data-target-id="${targetId}"][data-kind="likes"]`;
+    document.querySelectorAll(likesSelector).forEach((node) => {
+      node.textContent = String(likes);
+    });
+
+    const dislikesSelector = `[data-reaction-count][data-target-type="${targetType}"][data-target-id="${targetId}"][data-kind="dislikes"]`;
+    document.querySelectorAll(dislikesSelector).forEach((node) => {
+      node.textContent = String(dislikes);
+    });
+
+    const buttonSelector = `[data-reaction-button][data-target-type="${targetType}"][data-target-id="${targetId}"]`;
+    document.querySelectorAll(buttonSelector).forEach((button) => {
+      const action = button.dataset.action;
+      button.classList.remove("active");
+      if ((action === "like" && userReaction === 1) || (action === "dislike" && userReaction === -1)) {
+        button.classList.add("active");
+      }
+    });
   }
 
   function setupAlbumSearch() {

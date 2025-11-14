@@ -36,8 +36,68 @@
     </div>
   </div>
   <p class="review-content">{{ review.content }}</p>
+  {% set review_counts = review_reaction_counts.get(review.id, {'likes': 0, 'dislikes': 0}) %}
+  {% set user_review_reaction = review_user_reactions.get(review.id) %}
   <footer class="review-footer">
-    <span class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+    <div class="review-footer-left">
+      <div class="reaction-group" aria-label="Reações da review">
+        <form
+          method="post"
+          action="{{ url_for('main.react_review', review_id=review.id) }}"
+          data-reaction-form
+        >
+          <input type="hidden" name="action" value="like" />
+          <button
+            type="submit"
+            class="reaction-button {% if user_review_reaction == 1 %}active{% endif %}"
+            aria-label="Curtir review"
+            data-reaction-button
+            data-target-type="review"
+            data-target-id="{{ review.id }}"
+            data-action="like"
+          >
+            <span class="reaction-icon like" aria-hidden="true"></span>
+            <span
+              class="count"
+              data-reaction-count
+              data-target-type="review"
+              data-target-id="{{ review.id }}"
+              data-kind="likes"
+            >
+              {{ review_counts['likes'] }}
+            </span>
+          </button>
+        </form>
+        <form
+          method="post"
+          action="{{ url_for('main.react_review', review_id=review.id) }}"
+          data-reaction-form
+        >
+          <input type="hidden" name="action" value="dislike" />
+          <button
+            type="submit"
+            class="reaction-button dislike {% if user_review_reaction == -1 %}active{% endif %}"
+            aria-label="Descurtir review"
+            data-reaction-button
+            data-target-type="review"
+            data-target-id="{{ review.id }}"
+            data-action="dislike"
+          >
+            <span class="reaction-icon dislike" aria-hidden="true"></span>
+            <span
+              class="count"
+              data-reaction-count
+              data-target-type="review"
+              data-target-id="{{ review.id }}"
+              data-kind="dislikes"
+            >
+              {{ review_counts['dislikes'] }}
+            </span>
+          </button>
+        </form>
+      </div>
+      <span class="muted">{{ review.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+    </div>
     {% if review.user_id == current_user.id %}
     <div class="review-actions">
       <a class="button ghost" href="{{ url_for('main.edit_review', review_id=review.id) }}">Editar</a>
@@ -66,15 +126,75 @@
           <span class="timestamp">{{ comment.created_at.strftime('%d/%m %H:%M') }}</span>
         </div>
         <p>{{ comment.content }}</p>
-        {% if current_user.is_admin or comment.user_id == current_user.id or review.user_id == current_user.id %}
-        <form
-          method="post"
-          action="{{ url_for('main.delete_comment', review_id=review.id, comment_id=comment.id) }}"
-          class="comment-delete-form"
-        >
-          <button type="submit" class="comment-delete-button">Excluir</button>
-        </form>
-        {% endif %}
+        {% set comment_counts = comment_reaction_counts.get(comment.id, {'likes': 0, 'dislikes': 0}) %}
+        {% set user_comment_reaction = comment_user_reactions.get(comment.id) %}
+        <div class="comment-actions">
+          <div class="reaction-group" aria-label="Reações do comentário">
+            <form
+              method="post"
+              action="{{ url_for('main.react_comment', review_id=review.id, comment_id=comment.id) }}"
+              data-reaction-form
+            >
+              <input type="hidden" name="action" value="like" />
+              <button
+                type="submit"
+                class="reaction-button compact {% if user_comment_reaction == 1 %}active{% endif %}"
+                aria-label="Curtir comentário"
+                data-reaction-button
+                data-target-type="comment"
+                data-target-id="{{ comment.id }}"
+                data-action="like"
+              >
+                <span class="reaction-icon like" aria-hidden="true"></span>
+                <span
+                  class="count"
+                  data-reaction-count
+                  data-target-type="comment"
+                  data-target-id="{{ comment.id }}"
+                  data-kind="likes"
+                >
+                  {{ comment_counts['likes'] }}
+                </span>
+              </button>
+            </form>
+            <form
+              method="post"
+              action="{{ url_for('main.react_comment', review_id=review.id, comment_id=comment.id) }}"
+              data-reaction-form
+            >
+              <input type="hidden" name="action" value="dislike" />
+              <button
+                type="submit"
+                class="reaction-button compact dislike {% if user_comment_reaction == -1 %}active{% endif %}"
+                aria-label="Descurtir comentário"
+                data-reaction-button
+                data-target-type="comment"
+                data-target-id="{{ comment.id }}"
+                data-action="dislike"
+              >
+                <span class="reaction-icon dislike" aria-hidden="true"></span>
+                <span
+                  class="count"
+                  data-reaction-count
+                  data-target-type="comment"
+                  data-target-id="{{ comment.id }}"
+                  data-kind="dislikes"
+                >
+                  {{ comment_counts['dislikes'] }}
+                </span>
+              </button>
+            </form>
+          </div>
+          {% if current_user.is_admin or comment.user_id == current_user.id or review.user_id == current_user.id %}
+          <form
+            method="post"
+            action="{{ url_for('main.delete_comment', review_id=review.id, comment_id=comment.id) }}"
+            class="comment-delete-form"
+          >
+            <button type="submit" class="comment-delete-button">Excluir</button>
+          </form>
+          {% endif %}
+        </div>
       </div>
       {% else %}
       <p class="muted">Seja o primeiro a comentar.</p>

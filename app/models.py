@@ -96,6 +96,11 @@ class Review(db.Model):
         cascade="all,delete-orphan",
         order_by="ReviewComment.created_at.asc()",
     )
+    reactions = db.relationship(
+        "ReviewReaction",
+        back_populates="review",
+        cascade="all,delete-orphan",
+    )
 
     __table_args__ = (
         db.CheckConstraint("rating >= 1 AND rating <= 5", name="check_rating_range"),
@@ -147,6 +152,51 @@ class ReviewComment(db.Model):
 
     review = db.relationship("Review", back_populates="comments")
     user = db.relationship("User", back_populates="comments")
+    reactions = db.relationship(
+        "CommentReaction",
+        back_populates="comment",
+        cascade="all,delete-orphan",
+    )
+
+
+class ReviewReaction(db.Model):
+    __tablename__ = "review_reactions"
+
+    review_id = db.Column(
+        db.Integer, db.ForeignKey("reviews.id"), primary_key=True, nullable=False
+    )
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id"), primary_key=True, nullable=False
+    )
+    value = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    review = db.relationship("Review", back_populates="reactions")
+    user = db.relationship("User")
+
+    __table_args__ = (
+        db.CheckConstraint("value IN (-1, 1)", name="check_review_reaction_value"),
+    )
+
+
+class CommentReaction(db.Model):
+    __tablename__ = "comment_reactions"
+
+    comment_id = db.Column(
+        db.Integer, db.ForeignKey("review_comments.id"), primary_key=True, nullable=False
+    )
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id"), primary_key=True, nullable=False
+    )
+    value = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    comment = db.relationship("ReviewComment", back_populates="reactions")
+    user = db.relationship("User")
+
+    __table_args__ = (
+        db.CheckConstraint("value IN (-1, 1)", name="check_comment_reaction_value"),
+    )
 
 
 @login_manager.user_loader

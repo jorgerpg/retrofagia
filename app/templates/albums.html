@@ -21,7 +21,7 @@
       </div>
       <div class="album-search-manual">
         <p class="muted">Não encontrou o álbum? Complete os dados manualmente.</p>
-        <a class="button ghost" href="{{ url_for('main.create_album') }}">Cadastrar novo álbum</a>
+        <a class="button" href="{{ url_for('main.create_album') }}">Cadastrar novo álbum</a>
       </div>
     </article>
 
@@ -43,7 +43,7 @@
           <p class="muted">{{ album.artist }}</p>
         </div>
         <form method="post" action="{{ url_for('main.delete_album', album_id=album.id) }}">
-          <button type="submit" class="ghost">Remover</button>
+          <button type="submit" class="ghost danger">Remover</button>
         </form>
       </article>
       {% else %}

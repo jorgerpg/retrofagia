@@ -37,7 +37,7 @@
         </div>
         {% if is_self %}
         <form method="post" action="{{ url_for('main.delete_album', album_id=album.id) }}">
-          <button type="submit" class="ghost">Remover</button>
+          <button type="submit" class="ghost danger">Remover</button>
         </form>
         {% endif %}
       </article>
