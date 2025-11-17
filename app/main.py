@@ -869,7 +869,7 @@ def react_comment(review_id, comment_id):
 @login_required
 def delete_review(review_id):
     review = Review.query.get_or_404(review_id)
-    if review.user_id != current_user.id:
+    if not current_user.is_admin and review.user_id != current_user.id:
         abort(403)
 
     album_id = review.album_id
